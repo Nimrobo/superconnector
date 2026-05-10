@@ -2,6 +2,7 @@ import { hostname, platform, userInfo } from 'node:os';
 import { ClaudeCodeAdapter } from './adapters/claude-code/index.js';
 import { CodexAdapter } from './adapters/codex/index.js';
 import { OpenCodeAdapter } from './adapters/opencode/index.js';
+import { resolveConfig, type SuperconnectorConfig } from './config.js';
 import { detectAdapter } from './detect.js';
 import { AdapterNotSetError, PermissionRequiredError, UnknownSessionError } from './errors.js';
 import {
@@ -40,26 +41,30 @@ export interface CreateOptions {
   cwd?: string;
 }
 
-function buildAdapter(kind: AdapterKind): Adapter {
+function buildAdapter(kind: AdapterKind, config: SuperconnectorConfig): Adapter {
+  const model = config.models?.[kind];
   switch (kind) {
     case 'claude-code':
-      return new ClaudeCodeAdapter();
+      return new ClaudeCodeAdapter(model !== undefined ? { model } : {});
     case 'opencode':
-      return new OpenCodeAdapter();
+      return new OpenCodeAdapter(model !== undefined ? { model } : {});
     case 'codex':
-      return new CodexAdapter();
+      return new CodexAdapter(model !== undefined ? { model } : {});
   }
 }
 
 export function createSuperconnector(opts: CreateOptions = {}): Superconnector {
   const cwd = opts.cwd ?? process.cwd();
+  const config = resolveConfig(cwd).merged;
   let adapter: Adapter | null = null;
 
   if (opts.adapter) {
-    adapter = typeof opts.adapter === 'string' ? buildAdapter(opts.adapter) : opts.adapter;
+    adapter = typeof opts.adapter === 'string' ? buildAdapter(opts.adapter, config) : opts.adapter;
+  } else if (config.preferredAdapter) {
+    adapter = buildAdapter(config.preferredAdapter, config);
   } else {
     const detected = detectAdapter(cwd);
-    if (detected) adapter = buildAdapter(detected);
+    if (detected) adapter = buildAdapter(detected, config);
   }
 
   const requireAdapter = (): Adapter => {
@@ -75,7 +80,7 @@ export function createSuperconnector(opts: CreateOptions = {}): Superconnector {
       return requireAdapter();
     },
     setAdapter(next: Adapter | AdapterKind): void {
-      adapter = typeof next === 'string' ? buildAdapter(next) : next;
+      adapter = typeof next === 'string' ? buildAdapter(next, config) : next;
     },
     listSessions(filter?: { appLabel?: string }): SessionRecord[] {
       return listSessionsImpl({
@@ -85,6 +90,9 @@ export function createSuperconnector(opts: CreateOptions = {}): Superconnector {
     },
     spawn(spawnOpts: SpawnOptions): AsyncIterable<AgentMessage> {
       const a = requireAdapter();
+      if (spawnOpts.permissionMode === undefined && config.permissionMode !== undefined) {
+        spawnOpts = { ...spawnOpts, permissionMode: config.permissionMode };
+      }
       if (spawnOpts.resumeLastCreatedSession) {
         const latest = findLatestSession({ cwd, appLabel: spawnOpts.appLabel });
         if (latest) {
@@ -113,6 +121,9 @@ export function createSuperconnector(opts: CreateOptions = {}): Superconnector {
     },
     resume(resumeOpts: ResumeOptions): AsyncIterable<AgentMessage> {
       const a = requireAdapter();
+      if (resumeOpts.permissionMode === undefined && config.permissionMode !== undefined) {
+        resumeOpts = { ...resumeOpts, permissionMode: config.permissionMode };
+      }
       const found = listSessionsImpl({ cwd, appLabel: resumeOpts.appLabel })
         .some((s) => s.sessionId === resumeOpts.sessionId);
       if (!found) {

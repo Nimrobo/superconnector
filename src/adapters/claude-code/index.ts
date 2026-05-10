@@ -13,6 +13,7 @@ import { EventQueue } from '../../util/event-queue.js';
 export interface ClaudeCodeAdapterOptions {
   binPath?: string;
   extraArgs?: string[];
+  model?: string;
 }
 
 const DEFAULT_APPROVAL_TIMEOUT_MS = 60_000;
@@ -27,10 +28,12 @@ export class ClaudeCodeAdapter implements Adapter {
   readonly kind: AdapterKind = 'claude-code';
   private readonly binPath: string;
   private readonly extraArgs: string[];
+  private readonly model: string | undefined;
 
   constructor(opts: ClaudeCodeAdapterOptions = {}) {
     this.binPath = opts.binPath ?? process.env['CLAUDE_BIN'] ?? 'claude';
     this.extraArgs = opts.extraArgs ?? [];
+    this.model = opts.model;
   }
 
   spawn(opts: SpawnOptions, cwd: string): AsyncIterable<AgentMessage> {
@@ -104,7 +107,12 @@ export class ClaudeCodeAdapter implements Adapter {
       extraArgs.push('--permission-prompt-tool', host.permissionPromptToolName);
     }
 
-    const args = [...baseArgs, ...extraArgs, ...this.extraArgs];
+    const allArgs = [...baseArgs, ...extraArgs, ...this.extraArgs];
+    const hasModel = allArgs.includes('--model') || allArgs.includes('-m');
+    if (this.model && !hasModel) {
+      allArgs.push('--model', this.model);
+    }
+    const args = allArgs;
 
     const onClose = async () => {
       if (externalEvents) externalEvents.close();
