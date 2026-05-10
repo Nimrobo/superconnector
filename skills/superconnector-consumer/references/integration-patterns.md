@@ -17,7 +17,7 @@ export interface AgentRunEvent {
   content: unknown;
 }
 
-export function createAgentService(args: { cwd: string; appLabel: string }) {
+export function createAgentService(args: { cwd: string; appId: string; sessionSelector?: string }) {
   const sc = createSuperconnector({
     cwd: args.cwd,
     adapter: "claude-code",
@@ -25,13 +25,17 @@ export function createAgentService(args: { cwd: string; appLabel: string }) {
 
   return {
     listSessions() {
-      return sc.listSessions({ appLabel: args.appLabel });
+      return sc.listSessions({
+        appId: args.appId,
+        ...(args.sessionSelector !== undefined ? { sessionSelector: args.sessionSelector } : {}),
+      });
     },
 
     async *spawn(prompt: string, signal?: AbortSignal): AsyncIterable<AgentRunEvent> {
       for await (const msg of sc.spawn({
         prompt,
-        appLabel: args.appLabel,
+        appId: args.appId,
+        ...(args.sessionSelector !== undefined ? { sessionSelector: args.sessionSelector } : {}),
         permissionMode: "read",
         signal,
       })) {
@@ -43,7 +47,8 @@ export function createAgentService(args: { cwd: string; appLabel: string }) {
       for await (const msg of sc.resume({
         sessionId,
         prompt,
-        appLabel: args.appLabel,
+        appId: args.appId,
+        ...(args.sessionSelector !== undefined ? { sessionSelector: args.sessionSelector } : {}),
         permissionMode: "read",
         signal,
       })) {
@@ -64,12 +69,13 @@ function normalizeMessage(msg: AgentMessage): AgentRunEvent {
 
 ## Continue Last Session
 
-Use this for simple apps with one active thread per workspace and app label.
+Use this for simple apps with one active thread per workspace, or one active thread per selector.
 
 ```ts
 for await (const msg of sc.spawn({
   prompt,
-  appLabel: "my-consumer-app",
+  appId: "my-consumer-app",
+  sessionSelector: workspaceId,
   resumeLastCreatedSession: true,
   permissionMode: "read",
   signal,
@@ -78,12 +84,14 @@ for await (const msg of sc.spawn({
 }
 ```
 
-`resumeLastCreatedSession` resumes the most recent recorded session for the same `cwd` and `appLabel`. If no session exists, it starts a new one.
+`resumeLastCreatedSession` resumes the most recent recorded session for the same `cwd`, `appId`, and `sessionSelector`. If `sessionSelector` is omitted, only sessions without a selector are considered. If no matching session exists, it starts a new one.
 
 ## Multi-Session Resume
 
 ```ts
-const sessions = sc.listSessions({ appLabel: "my-consumer-app" });
+const sessions = workspaceId === undefined
+  ? sc.listSessions({ appId: "my-consumer-app" })
+  : sc.listSessions({ appId: "my-consumer-app", sessionSelector: workspaceId });
 const selected = sessions.find((s) => s.sessionId === requestedSessionId);
 
 if (!selected) {
@@ -93,7 +101,8 @@ if (!selected) {
 for await (const msg of sc.resume({
   sessionId: selected.sessionId,
   prompt,
-  appLabel: selected.appLabel,
+  appId: selected.appId,
+  ...(selected.sessionSelector !== undefined ? { sessionSelector: selected.sessionSelector } : {}),
   permissionMode: "read",
   signal,
 })) {
@@ -110,7 +119,7 @@ Use approvals when the app wants an edit-capable run while still letting the use
 ```ts
 for await (const msg of sc.spawn({
   prompt,
-  appLabel: "my-consumer-app",
+  appId: "my-consumer-app",
   permissionMode: "acceptEdits",
   approvalTimeoutMs: 60_000,
   onApprovalRequest: async (request) => {
@@ -169,7 +178,8 @@ const controller = new AbortController();
 const run = (async () => {
   for await (const msg of sc.spawn({
     prompt,
-    appLabel: "my-consumer-app",
+    appId: "my-consumer-app",
+    sessionSelector: workspaceId,
     permissionMode: "read",
     signal: controller.signal,
   })) {
@@ -223,6 +233,7 @@ export class StubAdapter implements Adapter {
 ```
 
 ```ts
+import assert from "node:assert/strict";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -236,9 +247,16 @@ const adapter = new StubAdapter();
 const sc = createSuperconnector({ cwd, adapter });
 
 const seen: string[] = [];
-for await (const msg of sc.spawn({ prompt: "Plan", appLabel: "test-app" })) {
+for await (const msg of sc.spawn({
+  prompt: "Plan",
+  appId: "test-app",
+  sessionSelector: "workspace-a",
+})) {
   seen.push(msg.type);
 }
+
+const sessions = sc.listSessions({ appId: "test-app", sessionSelector: "workspace-a" });
+assert.equal(sessions.length, 1);
 ```
 
 Use a temporary `cwd` and `SUPERCONNECTOR_HOME` per test file or per test case to avoid leaking sessions between tests.

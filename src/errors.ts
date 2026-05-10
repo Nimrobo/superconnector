@@ -6,8 +6,17 @@ export class SuperconnectorError extends Error {
 }
 
 export class UnknownSessionError extends SuperconnectorError {
-  constructor(public readonly sessionId: string, public readonly appLabel: string, public readonly cwd: string) {
-    super(`No session "${sessionId}" recorded for appLabel "${appLabel}" in cwd "${cwd}"`);
+  constructor(
+    public readonly sessionId: string,
+    public readonly appId: string,
+    public readonly cwd: string,
+    public readonly sessionSelector?: string,
+  ) {
+    super(
+      sessionSelector === undefined
+        ? `No session "${sessionId}" recorded for appId "${appId}" in cwd "${cwd}"`
+        : `No session "${sessionId}" recorded for appId "${appId}" and sessionSelector "${sessionSelector}" in cwd "${cwd}"`,
+    );
     this.name = 'UnknownSessionError';
   }
 }

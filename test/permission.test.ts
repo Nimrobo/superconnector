@@ -58,7 +58,7 @@ test('session log is written with metadata after spawn', async () => {
   const sc = createSuperconnector({ adapter: new MetaStubAdapter(), cwd });
 
   const seenTypes: string[] = [];
-  for await (const m of sc.spawn({ prompt: 'hello world', appLabel: 'app' })) {
+  for await (const m of sc.spawn({ prompt: 'hello world', appId: 'app' })) {
     seenTypes.push(m.type);
   }
   // spawn_meta should be intercepted, not surfaced
@@ -110,7 +110,7 @@ test('PermissionRequiredError thrown by adapter is recorded in session log', asy
   const sc = createSuperconnector({ adapter: new FailingAdapter(), cwd });
   await assert.rejects(
     async () => {
-      for await (const _ of sc.spawn({ prompt: 'p', appLabel: 'app' })) {
+      for await (const _ of sc.spawn({ prompt: 'p', appId: 'app' })) {
         /* drain */
       }
     },
@@ -331,7 +331,7 @@ test('ClaudeCodeAdapter spawn writes session log + appends --permission-mode fla
   try {
     const adapter = new ClaudeCodeAdapter({ binPath: FAKE_CLAUDE });
     const sc = createSuperconnector({ adapter, cwd });
-    for await (const _ of sc.spawn({ prompt: 'hi', appLabel: 'app' })) {
+    for await (const _ of sc.spawn({ prompt: 'hi', appId: 'app' })) {
       /* drain */
     }
     const log = readSessionLog('adapter-sess-1');
@@ -357,7 +357,7 @@ test('ClaudeCodeAdapter with permissionMode "read" passes plan flag', async () =
   try {
     const adapter = new ClaudeCodeAdapter({ binPath: FAKE_CLAUDE });
     const sc = createSuperconnector({ adapter, cwd });
-    for await (const _ of sc.spawn({ prompt: 'r', appLabel: 'app', permissionMode: 'read' })) {
+    for await (const _ of sc.spawn({ prompt: 'r', appId: 'app', permissionMode: 'read' })) {
       /* drain */
     }
     const log = readSessionLog('adapter-sess-2');
@@ -382,7 +382,7 @@ test('ClaudeCodeAdapter with onApprovalRequest enables approval server', async (
     const sc = createSuperconnector({ adapter, cwd });
     for await (const _ of sc.spawn({
       prompt: 'a',
-      appLabel: 'app',
+      appId: 'app',
       onApprovalRequest: async () => ({ decision: 'allow' }),
     })) {
       /* drain */

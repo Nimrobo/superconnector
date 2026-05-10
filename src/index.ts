@@ -82,10 +82,11 @@ export function createSuperconnector(opts: CreateOptions = {}): Superconnector {
     setAdapter(next: Adapter | AdapterKind): void {
       adapter = typeof next === 'string' ? buildAdapter(next, config) : next;
     },
-    listSessions(filter?: { appLabel?: string }): SessionRecord[] {
+    listSessions(filter?: { appId?: string; sessionSelector?: string }): SessionRecord[] {
       return listSessionsImpl({
         cwd,
-        ...(filter?.appLabel !== undefined ? { appLabel: filter.appLabel } : {}),
+        ...(filter?.appId !== undefined ? { appId: filter.appId } : {}),
+        ...(filter?.sessionSelector !== undefined ? { sessionSelector: filter.sessionSelector } : {}),
       });
     },
     spawn(spawnOpts: SpawnOptions): AsyncIterable<AgentMessage> {
@@ -94,14 +95,19 @@ export function createSuperconnector(opts: CreateOptions = {}): Superconnector {
         spawnOpts = { ...spawnOpts, permissionMode: config.permissionMode };
       }
       if (spawnOpts.resumeLastCreatedSession) {
-        const latest = findLatestSession({ cwd, appLabel: spawnOpts.appLabel });
+        const latest = findLatestSession({
+          cwd,
+          appId: spawnOpts.appId,
+          ...(spawnOpts.sessionSelector !== undefined ? { sessionSelector: spawnOpts.sessionSelector } : {}),
+        });
         if (latest) {
           return runResume(
             a,
             {
               prompt: spawnOpts.prompt,
-              appLabel: spawnOpts.appLabel,
+              appId: spawnOpts.appId,
               sessionId: latest.sessionId,
+              ...(spawnOpts.sessionSelector !== undefined ? { sessionSelector: spawnOpts.sessionSelector } : {}),
               ...(spawnOpts.signal !== undefined ? { signal: spawnOpts.signal } : {}),
               ...(spawnOpts.permissionMode !== undefined
                 ? { permissionMode: spawnOpts.permissionMode }
@@ -124,10 +130,13 @@ export function createSuperconnector(opts: CreateOptions = {}): Superconnector {
       if (resumeOpts.permissionMode === undefined && config.permissionMode !== undefined) {
         resumeOpts = { ...resumeOpts, permissionMode: config.permissionMode };
       }
-      const found = listSessionsImpl({ cwd, appLabel: resumeOpts.appLabel })
-        .some((s) => s.sessionId === resumeOpts.sessionId);
+      const found = listSessionsImpl({ cwd, appId: resumeOpts.appId }).some(
+        (s) =>
+          s.sessionId === resumeOpts.sessionId &&
+          (resumeOpts.sessionSelector === undefined || s.sessionSelector === resumeOpts.sessionSelector),
+      );
       if (!found) {
-        throw new UnknownSessionError(resumeOpts.sessionId, resumeOpts.appLabel, cwd);
+        throw new UnknownSessionError(resumeOpts.sessionId, resumeOpts.appId, cwd, resumeOpts.sessionSelector);
       }
       return runResume(a, resumeOpts, cwd);
     },
@@ -171,7 +180,8 @@ function readApprovalDecision(msg: AgentMessage): {
 function buildSessionLog(args: {
   sessionId: string;
   adapter: AdapterKind;
-  appLabel: string;
+  appId: string;
+  sessionSelector?: string;
   cwd: string;
   meta: SpawnMeta | null;
   prompt: string;
@@ -190,7 +200,8 @@ function buildSessionLog(args: {
   return {
     sessionId: args.sessionId,
     adapter: args.adapter,
-    appLabel: args.appLabel,
+    appId: args.appId,
+    ...(args.sessionSelector !== undefined ? { sessionSelector: args.sessionSelector } : {}),
     cwd: args.cwd,
     binPath: args.meta?.binPath ?? '',
     args: args.meta?.args ?? [],
@@ -244,12 +255,19 @@ async function* runSpawn(
 
       if (!observedSessionId && msg.sessionId) {
         observedSessionId = msg.sessionId;
-        recordSpawn({ cwd, appLabel: opts.appLabel, adapter: adapter.kind, sessionId: observedSessionId });
+        recordSpawn({
+          cwd,
+          appId: opts.appId,
+          adapter: adapter.kind,
+          sessionId: observedSessionId,
+          ...(opts.sessionSelector !== undefined ? { sessionSelector: opts.sessionSelector } : {}),
+        });
         if (!logged) {
           const log = buildSessionLog({
             sessionId: observedSessionId,
             adapter: adapter.kind,
-            appLabel: opts.appLabel,
+            appId: opts.appId,
+            ...(opts.sessionSelector !== undefined ? { sessionSelector: opts.sessionSelector } : {}),
             cwd,
             meta: pendingMeta,
             prompt: opts.prompt,
@@ -306,7 +324,12 @@ async function* runResume(
   opts: ResumeOptions,
   cwd: string,
 ): AsyncIterable<AgentMessage> {
-  recordResume({ cwd, appLabel: opts.appLabel, sessionId: opts.sessionId });
+  recordResume({
+    cwd,
+    appId: opts.appId,
+    sessionId: opts.sessionId,
+    ...(opts.sessionSelector !== undefined ? { sessionSelector: opts.sessionSelector } : {}),
+  });
   updateSessionLog(opts.sessionId, { lastUsedAt: new Date().toISOString() });
   try {
     for await (const msg of adapter.resume(opts, cwd)) {
