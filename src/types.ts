@@ -1,13 +1,23 @@
+import type { ApprovalCallback } from './approval/types.js';
+
 export type AdapterKind = 'claude-code' | 'opencode' | 'codex';
 
-export interface SpawnOptions {
+export type PermissionMode = 'read' | 'acceptEdits';
+
+export interface PermissionOptions {
+  permissionMode?: PermissionMode;
+  onApprovalRequest?: ApprovalCallback;
+  approvalTimeoutMs?: number;
+}
+
+export interface SpawnOptions extends PermissionOptions {
   prompt: string;
   appLabel: string;
   resumeLastCreatedSession?: boolean;
   signal?: AbortSignal;
 }
 
-export interface ResumeOptions {
+export interface ResumeOptions extends PermissionOptions {
   prompt: string;
   appLabel: string;
   sessionId: string;
@@ -20,7 +30,8 @@ export type AgentMessageType =
   | 'system'
   | 'result'
   | 'tool_use'
-  | 'tool_result';
+  | 'tool_result'
+  | 'superconnector';
 
 export interface AgentMessage {
   type: AgentMessageType;
@@ -52,3 +63,5 @@ export interface Superconnector {
   getAdapter(): Adapter;
   setAdapter(adapter: Adapter | AdapterKind): void;
 }
+
+export type { ApprovalRequest, ApprovalDecision, ApprovalCallback } from './approval/types.js';

@@ -26,6 +26,23 @@ export class AdapterFailedError extends SuperconnectorError {
   }
 }
 
+export class PermissionRequiredError extends AdapterFailedError {
+  constructor(
+    public readonly sessionId: string,
+    public readonly cwd: string,
+    public readonly resumeCommand: string,
+    exitCode: number | null,
+    stderr: string,
+  ) {
+    super(
+      `Agent halted on a permission request. Resume interactively with: ${resumeCommand}`,
+      exitCode,
+      stderr,
+    );
+    this.name = 'PermissionRequiredError';
+  }
+}
+
 export class NotImplementedError extends SuperconnectorError {
   constructor(adapter: string) {
     super(`Adapter "${adapter}" is not implemented yet.`);
