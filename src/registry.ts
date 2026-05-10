@@ -25,6 +25,88 @@ export function defaultRegistryPaths(): RegistryPaths {
   return { root, file: join(root, 'registry.json') };
 }
 
+export interface ApprovalLogEntry {
+  at: string;
+  toolName: string;
+  decision: 'allow' | 'deny';
+  reason: string;
+}
+
+export interface SessionLog {
+  sessionId: string;
+  adapter: AdapterKind;
+  appLabel: string;
+  cwd: string;
+  binPath: string;
+  args: string[];
+  promptPreview: string;
+  pid: number | null;
+  ppid: number | null;
+  hostname: string;
+  user: string;
+  platform: string;
+  nodeVersion: string;
+  permissionMode: 'read' | 'acceptEdits';
+  approvalServerEnabled: boolean;
+  createdAt: string;
+  lastUsedAt: string;
+  closedAt: string | null;
+  exitCode: number | null;
+  stderrTail: string;
+  permissionFailure: boolean;
+  resumeCommand: string;
+  approvals: ApprovalLogEntry[];
+}
+
+export function sessionLogPath(sessionId: string, paths: RegistryPaths = defaultRegistryPaths()): string {
+  return join(paths.root, 'sessions', `${sessionId}.json`);
+}
+
+function atomicWriteJson(file: string, data: unknown): void {
+  mkdirSync(dirname(file), { recursive: true });
+  const tmp = `${file}.${process.pid}.${Date.now()}.tmp`;
+  writeFileSync(tmp, JSON.stringify(data, null, 2), 'utf8');
+  renameSync(tmp, file);
+}
+
+export function writeSessionLog(log: SessionLog, paths: RegistryPaths = defaultRegistryPaths()): void {
+  atomicWriteJson(sessionLogPath(log.sessionId, paths), log);
+}
+
+export function readSessionLog(sessionId: string, paths: RegistryPaths = defaultRegistryPaths()): SessionLog | null {
+  const file = sessionLogPath(sessionId, paths);
+  if (!existsSync(file)) return null;
+  try {
+    return JSON.parse(readFileSync(file, 'utf8')) as SessionLog;
+  } catch {
+    return null;
+  }
+}
+
+export function updateSessionLog(
+  sessionId: string,
+  patch: Partial<SessionLog> | ((current: SessionLog) => SessionLog),
+  paths: RegistryPaths = defaultRegistryPaths(),
+): SessionLog | null {
+  const current = readSessionLog(sessionId, paths);
+  if (!current) return null;
+  const next = typeof patch === 'function' ? patch(current) : { ...current, ...patch };
+  atomicWriteJson(sessionLogPath(sessionId, paths), next);
+  return next;
+}
+
+export function appendApproval(
+  sessionId: string,
+  entry: ApprovalLogEntry,
+  paths: RegistryPaths = defaultRegistryPaths(),
+): void {
+  updateSessionLog(
+    sessionId,
+    (cur) => ({ ...cur, approvals: [...cur.approvals, entry], lastUsedAt: new Date().toISOString() }),
+    paths,
+  );
+}
+
 function entryKey(cwd: string, appLabel: string): string {
   return `${cwd}::${appLabel}`;
 }

@@ -1,12 +1,42 @@
 import { spawn, type ChildProcess } from 'node:child_process';
-import { AdapterFailedError } from '../../errors.js';
+import { AdapterFailedError, PermissionRequiredError } from '../../errors.js';
 import type { AgentMessage, AgentMessageType } from '../../types.js';
+import { EventQueue } from '../../util/event-queue.js';
 
 export interface RunArgs {
   binPath: string;
   args: string[];
   cwd: string;
   signal?: AbortSignal;
+  onClose?: () => void | Promise<void>;
+  /**
+   * External events (e.g. approval decisions) injected into the message stream.
+   * Closed by the caller; runClaude does not own its lifetime.
+   */
+  externalEvents?: EventQueue<AgentMessage>;
+}
+
+function shellQuote(s: string): string {
+  return `'${s.replace(/'/g, `'\\''`)}'`;
+}
+
+export function buildResumeCommand(cwd: string, sessionId: string): string {
+  return `(cd ${shellQuote(cwd)} && claude --resume ${shellQuote(sessionId)})`;
+}
+
+const PERMISSION_RX = /permission|approval|denied|not allowed/i;
+
+function looksLikePermissionResult(obj: Record<string, unknown>): boolean {
+  if (obj['type'] !== 'result') return false;
+  const subtype = obj['subtype'];
+  if (typeof subtype === 'string' && PERMISSION_RX.test(subtype)) return true;
+  if (obj['is_error'] === true) {
+    const candidates = [obj['result'], obj['error'], obj['message']];
+    for (const c of candidates) {
+      if (typeof c === 'string' && PERMISSION_RX.test(c)) return true;
+    }
+  }
+  return false;
 }
 
 export async function* runClaude(args: RunArgs): AsyncIterable<AgentMessage> {
@@ -14,6 +44,22 @@ export async function* runClaude(args: RunArgs): AsyncIterable<AgentMessage> {
     cwd: args.cwd,
     stdio: ['ignore', 'pipe', 'pipe'],
     env: process.env,
+  });
+
+  const stream = new EventQueue<AgentMessage>();
+
+  // First message: superconnector spawn metadata.
+  stream.push({
+    type: 'superconnector',
+    sessionId: '',
+    content: {
+      subtype: 'spawn_meta',
+      pid: child.pid ?? null,
+      binPath: args.binPath,
+      args: args.args,
+      cwd: args.cwd,
+    },
+    raw: { source: 'superconnector' },
   });
 
   const onAbort = () => {
@@ -30,49 +76,120 @@ export async function* runClaude(args: RunArgs): AsyncIterable<AgentMessage> {
     stderr += chunk;
   });
 
-  const exitPromise = new Promise<{ code: number | null }>((resolve, reject) => {
-    child.on('error', reject);
-    child.on('close', (code) => resolve({ code }));
-  });
+  let observedSessionId = '';
+  let permissionFailure = false;
 
   let buf = '';
-  const stdout = child.stdout;
-  if (!stdout) {
-    throw new AdapterFailedError('claude child has no stdout', null, '');
+  const flushLine = (line: string) => {
+    if (!line) return;
+    const parsed = parseLine(line);
+    if (!parsed) return;
+    if (!observedSessionId && parsed.msg.sessionId) {
+      observedSessionId = parsed.msg.sessionId;
+    }
+    if (looksLikePermissionResult(parsed.raw)) {
+      permissionFailure = true;
+      stream.push({
+        type: 'superconnector',
+        sessionId: observedSessionId,
+        content: {
+          subtype: 'permission_required',
+          resumeCommand: buildResumeCommand(args.cwd, observedSessionId),
+        },
+        raw: { source: 'superconnector' },
+      });
+    }
+    stream.push(parsed.msg);
+  };
+
+  if (child.stdout) {
+    child.stdout.setEncoding('utf8');
+    child.stdout.on('data', (chunk: string) => {
+      buf += chunk;
+      let i: number;
+      while ((i = buf.indexOf('\n')) >= 0) {
+        flushLine(buf.slice(0, i).trim());
+        buf = buf.slice(i + 1);
+      }
+    });
+    child.stdout.on('end', () => {
+      if (buf.trim()) flushLine(buf.trim());
+      buf = '';
+    });
   }
-  stdout.setEncoding('utf8');
+
+  type ExitInfo = { code: number | null; error?: Error };
+  const exitRef: { value: ExitInfo | null } = { value: null };
+  child.once('error', (e) => {
+    exitRef.value = { code: null, error: e };
+    stream.close();
+  });
+  child.once('close', (code) => {
+    exitRef.value = { code };
+    stream.close();
+  });
+
+  // External-event forwarding: pump items from externalEvents into stream.
+  let externalPump: Promise<void> | null = null;
+  if (args.externalEvents) {
+    const ext = args.externalEvents;
+    externalPump = (async () => {
+      while (true) {
+        const r = await ext.next();
+        if (r.done) return;
+        stream.push(r.value);
+      }
+    })();
+  }
 
   try {
-    for await (const chunk of stdout) {
-      buf += chunk as string;
-      let idx: number;
-      while ((idx = buf.indexOf('\n')) >= 0) {
-        const line = buf.slice(0, idx).trim();
-        buf = buf.slice(idx + 1);
-        if (!line) continue;
-        const msg = parseLine(line);
-        if (msg) yield msg;
-      }
-    }
-    if (buf.trim()) {
-      const msg = parseLine(buf.trim());
-      if (msg) yield msg;
+    while (true) {
+      const r = await stream.next();
+      if (r.done) break;
+      yield r.value;
     }
   } finally {
     if (args.signal) args.signal.removeEventListener('abort', onAbort);
+    if (args.onClose) {
+      try {
+        await args.onClose();
+      } catch {
+        /* noop */
+      }
+    }
+    if (externalPump) {
+      try {
+        await externalPump;
+      } catch {
+        /* noop */
+      }
+    }
   }
 
-  const { code } = await exitPromise;
-  if (code !== 0 && !args.signal?.aborted) {
-    throw new AdapterFailedError(
-      `claude exited with code ${code}`,
+  const code = exitRef.value?.code ?? null;
+  const aborted = args.signal?.aborted ?? false;
+  if (exitRef.value?.error) throw exitRef.value.error;
+
+  if (!permissionFailure && code !== 0 && !aborted) {
+    if (PERMISSION_RX.test(stderr)) permissionFailure = true;
+  }
+
+  if (permissionFailure && observedSessionId) {
+    throw new PermissionRequiredError(
+      observedSessionId,
+      args.cwd,
+      buildResumeCommand(args.cwd, observedSessionId),
       code,
       stderr.slice(-2000),
     );
   }
+
+  if (code !== 0 && !aborted) {
+    throw new AdapterFailedError(`claude exited with code ${code}`, code, stderr.slice(-2000));
+  }
 }
 
-function parseLine(line: string): AgentMessage | null {
+function parseLine(line: string): { msg: AgentMessage; raw: Record<string, unknown> } | null {
   let obj: Record<string, unknown>;
   try {
     obj = JSON.parse(line) as Record<string, unknown>;
@@ -88,9 +205,12 @@ function parseLine(line: string): AgentMessage | null {
         : '';
   if (!type) return null;
   return {
-    type,
-    sessionId,
-    content: obj['message'] ?? obj['content'] ?? obj['result'] ?? obj,
+    msg: {
+      type,
+      sessionId,
+      content: obj['message'] ?? obj['content'] ?? obj['result'] ?? obj,
+      raw: obj,
+    },
     raw: obj,
   };
 }
