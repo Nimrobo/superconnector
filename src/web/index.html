@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>superconnector config</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #161922;
+    --panel-2: #1c2030;
+    --border: #262b3a;
+    --text: #e6e8ee;
+    --muted: #8a90a2;
+    --accent: #7c9cff;
+    --accent-strong: #5b7dff;
+    --ok: #4ade80;
+    --danger: #f87171;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f6f7fb;
+      --panel: #ffffff;
+      --panel-2: #fbfbfd;
+      --border: #e5e7ee;
+      --text: #1a1d27;
+      --muted: #6b7280;
+      --accent: #4f6bff;
+      --accent-strong: #3b55e6;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.5;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 48px 24px 96px; }
+  header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 32px; }
+  header h1 { font-size: 22px; margin: 0; font-weight: 600; letter-spacing: -0.01em; }
+  header .tag { color: var(--muted); font-size: 13px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .grid { display: grid; gap: 20px; }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 22px 24px;
+  }
+  .card h2 { margin: 0 0 4px; font-size: 16px; font-weight: 600; }
+  .card .path {
+    color: var(--muted); font-size: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    margin-bottom: 18px; word-break: break-all;
+  }
+  .row { display: grid; grid-template-columns: 160px 1fr; align-items: center; gap: 16px; margin: 12px 0; }
+  .row label { font-size: 13px; color: var(--muted); }
+  .row select, .row input[type=text] {
+    width: 100%;
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-size: 14px;
+    font-family: inherit;
+  }
+  .row select:focus, .row input[type=text]:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+  .section-title { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin: 22px 0 6px; }
+  .actions { margin-top: 22px; display: flex; align-items: center; gap: 12px; }
+  button {
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 9px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  button:hover { background: var(--accent-strong); }
+  button:disabled { opacity: 0.55; cursor: not-allowed; }
+  .status { font-size: 13px; color: var(--muted); }
+  .status.ok { color: var(--ok); }
+  .status.err { color: var(--danger); }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>superconnector</h1>
+    <span class="tag">config</span>
+  </header>
+  <div class="grid">
+    <section class="card" data-scope="global">
+      <h2>Global</h2>
+      <div class="path" data-path></div>
+      <div data-fields></div>
+      <div class="actions">
+        <button data-save>Save</button>
+        <span class="status" data-status></span>
+      </div>
+    </section>
+    <section class="card" data-scope="local">
+      <h2>Local <span class="tag" style="font-weight:400;color:var(--muted);font-size:13px;">— this project</span></h2>
+      <div class="path" data-path></div>
+      <div data-fields></div>
+      <div class="actions">
+        <button data-save>Save</button>
+        <span class="status" data-status></span>
+      </div>
+    </section>
+  </div>
+</div>
+<script>
+const TOKEN = new URLSearchParams(location.search).get('t') || '';
+const ADAPTERS = ['claude-code', 'opencode', 'codex'];
+
+function el(tag, attrs = {}, children = []) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') e.className = v;
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+    else e.setAttribute(k, v);
+  }
+  for (const c of [].concat(children)) {
+    if (c == null) continue;
+    e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+  }
+  return e;
+}
+
+function renderCard(card, cfg) {
+  const fields = card.querySelector('[data-fields]');
+  fields.innerHTML = '';
+
+  const adapterSel = el('select', {}, [
+    el('option', { value: '' }, '(unset)'),
+    ...ADAPTERS.map((a) => el('option', { value: a }, a)),
+  ]);
+  adapterSel.value = cfg.preferredAdapter || '';
+  fields.appendChild(el('div', { class: 'row' }, [el('label', {}, 'Preferred adapter'), adapterSel]));
+
+  const permSel = el('select', {}, [
+    el('option', { value: '' }, '(unset)'),
+    el('option', { value: 'read' }, 'read'),
+    el('option', { value: 'acceptEdits' }, 'acceptEdits'),
+  ]);
+  permSel.value = cfg.permissionMode || '';
+  fields.appendChild(el('div', { class: 'row' }, [el('label', {}, 'Permission mode'), permSel]));
+
+  fields.appendChild(el('div', { class: 'section-title' }, 'Models per adapter'));
+  const modelInputs = {};
+  for (const a of ADAPTERS) {
+    const inp = el('input', { type: 'text', placeholder: '(default)' });
+    inp.value = (cfg.models && cfg.models[a]) || '';
+    modelInputs[a] = inp;
+    fields.appendChild(el('div', { class: 'row' }, [el('label', {}, a), inp]));
+  }
+
+  card._collect = () => {
+    const out = {};
+    if (adapterSel.value) out.preferredAdapter = adapterSel.value;
+    if (permSel.value) out.permissionMode = permSel.value;
+    const models = {};
+    for (const a of ADAPTERS) {
+      const v = modelInputs[a].value.trim();
+      if (v) models[a] = v;
+    }
+    if (Object.keys(models).length) out.models = models;
+    return out;
+  };
+}
+
+async function load() {
+  const res = await fetch(`/api/config?t=${encodeURIComponent(TOKEN)}`);
+  if (!res.ok) throw new Error(`load failed: ${res.status}`);
+  const data = await res.json();
+  for (const card of document.querySelectorAll('.card')) {
+    const scope = card.dataset.scope;
+    card.querySelector('[data-path]').textContent = scope === 'global' ? data.globalPath : data.localPath;
+    renderCard(card, (scope === 'global' ? data.global : data.local) || {});
+  }
+}
+
+async function save(card) {
+  const scope = card.dataset.scope;
+  const status = card.querySelector('[data-status]');
+  const btn = card.querySelector('[data-save]');
+  status.className = 'status'; status.textContent = 'Saving…';
+  btn.disabled = true;
+  try {
+    const body = JSON.stringify(card._collect());
+    const res = await fetch(`/api/config/${scope}?t=${encodeURIComponent(TOKEN)}`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body,
+    });
+    if (!res.ok) {
+      const t = await res.text();
+      throw new Error(t || `${res.status}`);
+    }
+    status.className = 'status ok'; status.textContent = 'Saved ✓';
+    setTimeout(() => { status.textContent = ''; status.className = 'status'; }, 2000);
+  } catch (e) {
+    status.className = 'status err'; status.textContent = String(e.message || e);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+document.querySelectorAll('.card').forEach((card) => {
+  card.querySelector('[data-save]').addEventListener('click', () => save(card));
+});
+
+load().catch((e) => {
+  document.body.insertAdjacentHTML('afterbegin', `<pre style="color:#f87171;padding:24px">${e}</pre>`);
+});
+</script>
+</body>
+</html>
