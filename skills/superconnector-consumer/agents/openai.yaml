@@ -1,0 +1,4 @@
+interface:
+  display_name: "Superconnector Consumer"
+  short_description: "Integrate Superconnector into apps"
+  default_prompt: "Use $superconnector-consumer to integrate Superconnector into this app."
