@@ -12,14 +12,16 @@ export interface PermissionOptions {
 
 export interface SpawnOptions extends PermissionOptions {
   prompt: string;
-  appLabel: string;
+  appId: string;
+  sessionSelector?: string;
   resumeLastCreatedSession?: boolean;
   signal?: AbortSignal;
 }
 
 export interface ResumeOptions extends PermissionOptions {
   prompt: string;
-  appLabel: string;
+  appId: string;
+  sessionSelector?: string;
   sessionId: string;
   signal?: AbortSignal;
 }
@@ -43,22 +45,30 @@ export interface AgentMessage {
 export interface SessionRecord {
   sessionId: string;
   adapter: AdapterKind;
-  appLabel: string;
+  appId: string;
+  sessionSelector?: string;
   cwd: string;
   createdAt: string;
   lastUsedAt: string;
+}
+
+export interface AdapterModel {
+  id: string;
+  label?: string;
+  description?: string;
 }
 
 export interface Adapter {
   kind: AdapterKind;
   spawn(opts: SpawnOptions, cwd: string): AsyncIterable<AgentMessage>;
   resume(opts: ResumeOptions, cwd: string): AsyncIterable<AgentMessage>;
+  listModels?(cwd: string): Promise<AdapterModel[]>;
 }
 
 export interface Superconnector {
   spawn(opts: SpawnOptions): AsyncIterable<AgentMessage>;
   resume(opts: ResumeOptions): AsyncIterable<AgentMessage>;
-  listSessions(filter?: { appLabel?: string }): SessionRecord[];
+  listSessions(filter?: { appId?: string; sessionSelector?: string }): SessionRecord[];
   detectAdapter(): AdapterKind | null;
   getAdapter(): Adapter;
   setAdapter(adapter: Adapter | AdapterKind): void;

@@ -59,8 +59,16 @@ test('config CLI serves config API and persists local config', async () => {
     const url = match[1]!;
     const initial = await fetch(new URL('/api/config' + new URL(url).search, url));
     assert.equal(initial.status, 200);
-    const data = (await initial.json()) as { localPath: string; globalPath: string };
+    const data = (await initial.json()) as {
+      localPath: string;
+      globalPath: string;
+      modelOptions?: Record<string, Array<{ id: string; label?: string }>>;
+    };
     assert.match(data.globalPath, /config\.json$/);
+    assert.deepEqual(data.modelOptions?.['claude-code'], [
+      { id: 'sonnet', label: 'Sonnet' },
+      { id: 'opus', label: 'Opus' },
+    ]);
 
     const putUrl = new URL('/api/config/local' + new URL(url).search, url);
     const saved = await fetch(putUrl, {

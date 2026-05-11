@@ -131,7 +131,11 @@ function el(tag, attrs = {}, children = []) {
   return e;
 }
 
-function renderCard(card, cfg) {
+function modelOptionLabel(model) {
+  return model.label ? `${model.label} (${model.id})` : model.id;
+}
+
+function renderCard(card, cfg, modelOptions = {}) {
   const fields = card.querySelector('[data-fields]');
   fields.innerHTML = '';
 
@@ -153,10 +157,27 @@ function renderCard(card, cfg) {
   fields.appendChild(el('div', { class: 'section-title' }, 'Models per adapter'));
   const modelInputs = {};
   for (const a of ADAPTERS) {
-    const inp = el('input', { type: 'text', placeholder: '(default)' });
-    inp.value = (cfg.models && cfg.models[a]) || '';
-    modelInputs[a] = inp;
-    fields.appendChild(el('div', { class: 'row' }, [el('label', {}, a), inp]));
+    const current = (cfg.models && cfg.models[a]) || '';
+    const options = modelOptions[a] || [];
+    if (options.length > 0) {
+      const known = new Set(options.map((m) => m.id));
+      const selectOptions = [
+        el('option', { value: '' }, '(default)'),
+        ...options.map((m) => el('option', { value: m.id, title: m.description || '' }, modelOptionLabel(m))),
+      ];
+      if (current && !known.has(current)) {
+        selectOptions.push(el('option', { value: current }, `${current} (custom)`));
+      }
+      const sel = el('select', {}, selectOptions);
+      sel.value = current;
+      modelInputs[a] = sel;
+      fields.appendChild(el('div', { class: 'row' }, [el('label', {}, a), sel]));
+    } else {
+      const inp = el('input', { type: 'text', placeholder: '(default)' });
+      inp.value = current;
+      modelInputs[a] = inp;
+      fields.appendChild(el('div', { class: 'row' }, [el('label', {}, a), inp]));
+    }
   }
 
   card._collect = () => {
@@ -180,7 +201,7 @@ async function load() {
   for (const card of document.querySelectorAll('.card')) {
     const scope = card.dataset.scope;
     card.querySelector('[data-path]').textContent = scope === 'global' ? data.globalPath : data.localPath;
-    renderCard(card, (scope === 'global' ? data.global : data.local) || {});
+    renderCard(card, (scope === 'global' ? data.global : data.local) || {}, data.modelOptions || {});
   }
 }
 
