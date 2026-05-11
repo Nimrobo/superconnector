@@ -1,0 +1,53 @@
+{
+  "name": "@nimrobo/superconnector",
+  "version": "0.1.0",
+  "description": "Agent-agnostic transport for apps to spawn, resume, and stream coding-agent sessions (Claude Code, OpenCode, Codex).",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./config": {
+      "types": "./dist/config.d.ts",
+      "import": "./dist/config.js"
+    },
+    "./adapters/claude-code": {
+      "types": "./dist/adapters/claude-code/index.d.ts",
+      "import": "./dist/adapters/claude-code/index.js"
+    },
+    "./adapters/opencode": {
+      "types": "./dist/adapters/opencode/index.d.ts",
+      "import": "./dist/adapters/opencode/index.js"
+    },
+    "./adapters/codex": {
+      "types": "./dist/adapters/codex/index.d.ts",
+      "import": "./dist/adapters/codex/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "skills",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "rm -rf dist",
+    "test": "node --test --import tsx test/**/*.test.ts"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "agent",
+    "claude-code",
+    "opencode",
+    "codex",
+    "session",
+    "transport"
+  ],
+  "license": "MIT"
+}

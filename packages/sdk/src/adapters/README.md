@@ -1,6 +1,6 @@
 # Writing a Superconnector adapter
 
-An adapter implements the `Adapter` interface from `superconnector`:
+An adapter implements the `Adapter` interface from `@nimrobo/superconnector`:
 
 ```ts
 interface Adapter {

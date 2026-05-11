@@ -4,7 +4,13 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomBytes } from 'node:crypto';
-import { localConfigPath, readConfig, resolveConfig, writeConfig, type SuperconnectorConfig } from '../config.js';
+import {
+  localConfigPath,
+  readConfig,
+  resolveConfig,
+  writeConfig,
+  type SuperconnectorConfig,
+} from '@nimrobo/superconnector/config';
 
 export interface StartConfigServerOptions {
   cwd: string;

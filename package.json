@@ -1,59 +1,20 @@
 {
-  "name": "superconnector",
+  "name": "superconnector-monorepo",
   "version": "0.1.0",
-  "description": "Agent-agnostic transport for apps to spawn, resume, and stream coding-agent sessions (Claude Code, OpenCode, Codex).",
+  "private": true,
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "bin": {
-    "superconnector": "./dist/cli.js"
-  },
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    },
-    "./adapters/claude-code": {
-      "types": "./dist/adapters/claude-code/index.d.ts",
-      "import": "./dist/adapters/claude-code/index.js"
-    },
-    "./adapters/opencode": {
-      "types": "./dist/adapters/opencode/index.d.ts",
-      "import": "./dist/adapters/opencode/index.js"
-    },
-    "./adapters/codex": {
-      "types": "./dist/adapters/codex/index.d.ts",
-      "import": "./dist/adapters/codex/index.js"
-    }
-  },
-  "files": [
-    "dist",
-    "src",
-    "skills",
-    "README.md",
-    "LICENSE"
+  "workspaces": [
+    "packages/*"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "clean": "rm -rf dist",
-    "test": "node --test --import tsx test/**/*.test.ts",
+    "build": "npm run build --workspace @nimrobo/superconnector && npm run build:local --workspace @nimrobo/superconnector-cli",
+    "clean": "npm run clean --workspaces",
+    "test": "npm run test --workspaces",
     "prepublishOnly": "npm run clean && npm run build"
-  },
-  "engines": {
-    "node": ">=20"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
     "tsx": "^4.7.0",
     "typescript": "^5.4.0"
-  },
-  "keywords": [
-    "agent",
-    "claude-code",
-    "opencode",
-    "codex",
-    "session",
-    "transport"
-  ],
-  "license": "MIT"
+  }
 }

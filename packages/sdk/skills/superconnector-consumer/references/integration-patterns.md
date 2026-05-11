@@ -9,7 +9,7 @@ import {
   createSuperconnector,
   PermissionRequiredError,
   type AgentMessage,
-} from "superconnector";
+} from "@nimrobo/superconnector";
 
 export interface AgentRunEvent {
   sessionId: string;
@@ -193,7 +193,7 @@ import type {
   AgentMessage,
   ResumeOptions,
   SpawnOptions,
-} from "superconnector";
+} from "@nimrobo/superconnector";
 
 export class StubAdapter implements Adapter {
   readonly kind = "claude-code" as const;
@@ -226,7 +226,7 @@ export class StubAdapter implements Adapter {
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createSuperconnector } from "superconnector";
+import { createSuperconnector } from "@nimrobo/superconnector";
 
 const home = mkdtempSync(join(tmpdir(), "sc-test-home-"));
 process.env.SUPERCONNECTOR_HOME = home;
@@ -260,5 +260,5 @@ Example local config at `<cwd>/.superconnector/config.json`:
 Run the config UI from the selected workspace:
 
 ```sh
-npx superconnector config
+npx @nimrobo/superconnector-cli config
 ```
