@@ -22,7 +22,6 @@ Requirements:
 import { createSuperconnector } from "@nimrobo/superconnector";
 
 const sc = createSuperconnector({
-  cwd: "/path/to/workspace",
   adapter: "claude-code",
 });
 
@@ -124,7 +123,6 @@ Use an explicit adapter when your app knows which agent runtime it is targeting:
 
 ```ts
 const sc = createSuperconnector({
-  cwd: workspaceRoot,
   adapter: "codex",
 });
 ```
@@ -132,8 +130,16 @@ const sc = createSuperconnector({
 Or let Superconnector use config and detection:
 
 ```ts
-const sc = createSuperconnector({ cwd: workspaceRoot });
+const sc = createSuperconnector();
 ```
+
+By default the agent runs in `process.cwd()`. Pass `cwd` only to narrow execution to the current process directory or one of its descendants:
+
+```ts
+const sc = createSuperconnector({ cwd: "packages/app" });
+```
+
+For absolute workspace paths, start the trusted Node process from that workspace root and omit `cwd`; explicit cwd values outside the process cwd tree are rejected.
 
 Resolution order:
 
