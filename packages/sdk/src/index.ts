@@ -1,6 +1,7 @@
 import { hostname, platform, userInfo } from 'node:os';
 import { ClaudeCodeAdapter } from './adapters/claude-code/index.js';
 import { CodexAdapter } from './adapters/codex/index.js';
+import { buildCodexResumeCommand } from './adapters/codex/process.js';
 import { OpenCodeAdapter } from './adapters/opencode/index.js';
 import { resolveConfig, type SuperconnectorConfig } from './config.js';
 import { detectAdapter } from './detect.js';
@@ -229,8 +230,15 @@ function shellQuote(s: string): string {
   return `'${s.replace(/'/g, `'\\''`)}'`;
 }
 
-function buildResumeCommand(cwd: string, sessionId: string): string {
-  return `(cd ${shellQuote(cwd)} && claude --resume ${shellQuote(sessionId)})`;
+function buildResumeCommand(cwd: string, sessionId: string, adapter: AdapterKind): string {
+  switch (adapter) {
+    case 'claude-code':
+      return `(cd ${shellQuote(cwd)} && claude --resume ${shellQuote(sessionId)})`;
+    case 'codex':
+      return buildCodexResumeCommand(cwd, sessionId);
+    case 'opencode':
+      return `(cd ${shellQuote(cwd)} && opencode resume ${shellQuote(sessionId)})`;
+  }
 }
 
 async function* runSpawn(
@@ -273,7 +281,7 @@ async function* runSpawn(
             prompt: opts.prompt,
             permissionMode,
             approvalServerEnabled,
-            resumeCommand: buildResumeCommand(cwd, observedSessionId),
+            resumeCommand: buildResumeCommand(cwd, observedSessionId, adapter.kind),
           });
           // Replay any approvals that arrived before sessionId was known.
           log.approvals = pendingApprovals.slice();
