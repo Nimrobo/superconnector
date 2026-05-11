@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { join } from 'node:path';
 import { AdapterFailedError } from '../../errors.js';
 import type {
   Adapter,
@@ -10,6 +11,8 @@ import type {
   SpawnOptions,
 } from '../../types.js';
 import { runCodex } from './process.js';
+import { isExecutableAvailable } from '../../util/executable.js';
+import { isDirectory, pathExists } from '../../util/filesystem.js';
 
 export interface CodexAdapterOptions {
   binPath?: string;
@@ -35,11 +38,17 @@ export class CodexAdapter implements Adapter {
   private readonly binPath: string;
   private readonly extraArgs: string[];
   readonly model: string | undefined;
+  private readonly binaryAvailable: boolean;
 
   constructor(opts: CodexAdapterOptions = {}) {
     this.binPath = opts.binPath ?? process.env['CODEX_BIN'] ?? 'codex';
     this.extraArgs = opts.extraArgs ?? [];
     this.model = opts.model;
+    this.binaryAvailable = isExecutableAvailable(this.binPath);
+  }
+
+  detect(cwd: string): boolean {
+    return this.binaryAvailable && (isDirectory(join(cwd, '.codex')) || pathExists(join(cwd, 'AGENTS.md')));
   }
 
   spawn(opts: SpawnOptions, cwd: string): AsyncIterable<AgentMessage> {

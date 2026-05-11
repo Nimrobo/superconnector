@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { join } from 'node:path';
 import type {
   Adapter,
   AdapterKind,
@@ -10,6 +11,8 @@ import type {
 } from '../../types.js';
 import { runOpenCode } from './process.js';
 import { EventQueue } from '../../util/event-queue.js';
+import { isExecutableAvailable } from '../../util/executable.js';
+import { isDirectory, pathExists } from '../../util/filesystem.js';
 
 export interface OpenCodeAdapterOptions {
   binPath?: string;
@@ -61,11 +64,17 @@ export class OpenCodeAdapter implements Adapter {
   private readonly binPath: string;
   private readonly extraArgs: string[];
   private readonly model: string | undefined;
+  private readonly binaryAvailable: boolean;
 
   constructor(opts: OpenCodeAdapterOptions = {}) {
     this.binPath = opts.binPath ?? process.env['OPENCODE_BIN'] ?? 'opencode';
     this.extraArgs = opts.extraArgs ?? [];
     this.model = opts.model;
+    this.binaryAvailable = isExecutableAvailable(this.binPath);
+  }
+
+  detect(cwd: string): boolean {
+    return this.binaryAvailable && (isDirectory(join(cwd, '.opencode')) || pathExists(join(cwd, 'opencode.json')));
   }
 
   spawn(opts: SpawnOptions, cwd: string): AsyncIterable<AgentMessage> {

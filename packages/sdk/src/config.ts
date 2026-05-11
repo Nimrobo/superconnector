@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { isAdapterKind } from './adapters/registry.js';
 import { defaultRegistryPaths } from './registry.js';
 import type { AdapterKind, PermissionMode } from './types.js';
 
@@ -17,7 +18,6 @@ export interface ResolvedConfig {
   localPath: string;
 }
 
-const VALID_ADAPTERS: ReadonlySet<AdapterKind> = new Set(['claude-code', 'opencode', 'codex']);
 const VALID_PERMISSION_MODES: ReadonlySet<PermissionMode> = new Set(['read', 'acceptEdits']);
 
 export function globalConfigPath(): string {
@@ -32,8 +32,8 @@ function sanitize(raw: unknown): SuperconnectorConfig | null {
   if (!raw || typeof raw !== 'object') return null;
   const r = raw as Record<string, unknown>;
   const out: SuperconnectorConfig = {};
-  if (typeof r['preferredAdapter'] === 'string' && VALID_ADAPTERS.has(r['preferredAdapter'] as AdapterKind)) {
-    out.preferredAdapter = r['preferredAdapter'] as AdapterKind;
+  if (typeof r['preferredAdapter'] === 'string' && isAdapterKind(r['preferredAdapter'])) {
+    out.preferredAdapter = r['preferredAdapter'];
   }
   if (typeof r['permissionMode'] === 'string' && VALID_PERMISSION_MODES.has(r['permissionMode'] as PermissionMode)) {
     out.permissionMode = r['permissionMode'] as PermissionMode;
@@ -41,8 +41,8 @@ function sanitize(raw: unknown): SuperconnectorConfig | null {
   if (r['models'] && typeof r['models'] === 'object') {
     const models: Partial<Record<AdapterKind, string>> = {};
     for (const [k, v] of Object.entries(r['models'] as Record<string, unknown>)) {
-      if (VALID_ADAPTERS.has(k as AdapterKind) && typeof v === 'string' && v.length > 0) {
-        models[k as AdapterKind] = v;
+      if (isAdapterKind(k) && typeof v === 'string' && v.length > 0) {
+        models[k] = v;
       }
     }
     if (Object.keys(models).length > 0) out.models = models;

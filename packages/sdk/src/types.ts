@@ -60,6 +60,7 @@ export interface AdapterModel {
 
 export interface Adapter {
   kind: AdapterKind;
+  detect(cwd: string): boolean;
   spawn(opts: SpawnOptions, cwd: string): AsyncIterable<AgentMessage>;
   resume(opts: ResumeOptions, cwd: string): AsyncIterable<AgentMessage>;
   listModels?(cwd: string): Promise<AdapterModel[]>;

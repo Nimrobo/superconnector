@@ -7,9 +7,12 @@ import type {
   ResumeOptions,
   SpawnOptions,
 } from '../../types.js';
+import { join } from 'node:path';
 import { runClaude } from './process.js';
 import { startApprovalHost, type ApprovalHostHandle } from '../../approval/host.js';
 import { EventQueue } from '../../util/event-queue.js';
+import { isExecutableAvailable } from '../../util/executable.js';
+import { isDirectory, pathExists } from '../../util/filesystem.js';
 
 export interface ClaudeCodeAdapterOptions {
   binPath?: string;
@@ -30,11 +33,17 @@ export class ClaudeCodeAdapter implements Adapter {
   private readonly binPath: string;
   private readonly extraArgs: string[];
   private readonly model: string | undefined;
+  private readonly binaryAvailable: boolean;
 
   constructor(opts: ClaudeCodeAdapterOptions = {}) {
     this.binPath = opts.binPath ?? process.env['CLAUDE_BIN'] ?? 'claude';
     this.extraArgs = opts.extraArgs ?? [];
     this.model = opts.model;
+    this.binaryAvailable = isExecutableAvailable(this.binPath);
+  }
+
+  detect(cwd: string): boolean {
+    return this.binaryAvailable && (isDirectory(join(cwd, '.claude')) || pathExists(join(cwd, 'CLAUDE.md')));
   }
 
   spawn(opts: SpawnOptions, cwd: string): AsyncIterable<AgentMessage> {
