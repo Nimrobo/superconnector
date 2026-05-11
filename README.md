@@ -26,7 +26,6 @@ Requirements:
 import { createSuperconnector } from "@nimrobo/superconnector";
 
 const sc = createSuperconnector({
-  cwd: "/path/to/workspace",
   adapter: "claude-code",
 });
 
@@ -44,7 +43,7 @@ Use `permissionMode: "read"` for planning, review, and analysis flows. Use `perm
 ## Core Concepts
 
 - **Adapter**: the agent runtime to use. Built-ins are `claude-code`, `opencode`, and `codex`.
-- **`cwd`**: the project directory where the agent runs. Use the real workspace or repo root, not a temporary request directory.
+- **`cwd`**: the project directory where the agent runs. By default this is `process.cwd()`. If passed explicitly, it must resolve to the current process cwd or one of its descendants. Start Superconnector from the trusted workspace root or use a relative child path such as `"packages/app"`.
 - **`appId`**: a stable identifier for your app or feature. Superconnector records sessions by `cwd` and `appId`.
 - **`sessionSelector`**: an optional narrower scope inside an app, such as a workspace id, tab id, thread id, or user-visible conversation id.
 - **Session registry**: Superconnector records spawned sessions under `~/.superconnector` by default so the app can list and resume them later.

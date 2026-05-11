@@ -1,18 +1,27 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createSuperconnector } from '../src/index.js';
-import type { Adapter, AgentMessage, ResumeOptions, SpawnOptions } from '../src/types.js';
+import { recordSpawn } from '../src/registry.js';
+import type { Adapter, AdapterKind, AgentMessage, ResumeOptions, SpawnOptions } from '../src/types.js';
 import { UnknownSessionError } from '../src/errors.js';
 import { withProcessCwd } from './test-util.js';
 
+const here = dirname(fileURLToPath(import.meta.url));
+const FAKE_CODEX = join(here, 'fake-codex.mjs');
+
 class StubAdapter implements Adapter {
-  readonly kind = 'claude-code' as const;
+  readonly kind: AdapterKind;
   spawnCalls: SpawnOptions[] = [];
   resumeCalls: ResumeOptions[] = [];
   nextSessionId = 'stub-sess-1';
+
+  constructor(kind: AdapterKind = 'claude-code') {
+    this.kind = kind;
+  }
 
   detect(_cwd: string): boolean {
     return false;
@@ -42,6 +51,12 @@ function isolatedHome(): string {
   const home = mkdtempSync(join(tmpdir(), 'sc-home-'));
   process.env.SUPERCONNECTOR_HOME = home;
   return home;
+}
+
+async function drain(iterable: AsyncIterable<AgentMessage>): Promise<AgentMessage[]> {
+  const out: AgentMessage[] = [];
+  for await (const msg of iterable) out.push(msg);
+  return out;
 }
 
 test('spawn streams messages and records the session', async () => {
@@ -98,6 +113,22 @@ test('resume works for a session this app created', async () => {
   assert.equal(adapter.resumeCalls[0]!.sessionId, 'stub-sess-1');
 });
 
+test('resume uses the adapter recorded for the session, not the current adapter', async () => {
+  isolatedHome();
+  const cwd = mkdtempSync(join(tmpdir(), 'sc-cwd-'));
+  const original = new StubAdapter('claude-code');
+  const current = new StubAdapter('codex');
+  const sc = withProcessCwd(cwd, () => createSuperconnector({ adapter: original, cwd }));
+
+  await drain(sc.spawn({ prompt: 'go', appId: 'app' }));
+  sc.setAdapter(current);
+  await drain(sc.resume({ prompt: 'continue', appId: 'app', sessionId: 'stub-sess-1' }));
+
+  assert.equal(original.resumeCalls.length, 1);
+  assert.equal(original.resumeCalls[0]!.sessionId, 'stub-sess-1');
+  assert.equal(current.resumeCalls.length, 0);
+});
+
 test('resume rejects a session when provided sessionSelector does not match', async () => {
   isolatedHome();
   const cwd = mkdtempSync(join(tmpdir(), 'sc-cwd-'));
@@ -141,6 +172,27 @@ test('resumeLastCreatedSession=true resumes prior session if any', async () => {
   assert.equal(adapter.resumeCalls.length, 1);
   assert.equal(adapter.resumeCalls[0]!.sessionId, 'stub-sess-1');
   assert.equal(adapter.spawnCalls.length, 1);
+});
+
+test('resumeLastCreatedSession=true uses the adapter recorded for the session', async () => {
+  isolatedHome();
+  const cwd = mkdtempSync(join(tmpdir(), 'sc-cwd-'));
+  const original = new StubAdapter('claude-code');
+  const current = new StubAdapter('codex');
+  const sc = withProcessCwd(cwd, () => createSuperconnector({ adapter: original, cwd }));
+
+  await drain(sc.spawn({ prompt: 'first', appId: 'app' }));
+  sc.setAdapter(current);
+  await drain(sc.spawn({
+    prompt: 'second',
+    appId: 'app',
+    resumeLastCreatedSession: true,
+  }));
+
+  assert.equal(original.resumeCalls.length, 1);
+  assert.equal(original.resumeCalls[0]!.sessionId, 'stub-sess-1');
+  assert.equal(current.resumeCalls.length, 0);
+  assert.equal(current.spawnCalls.length, 0);
 });
 
 test('resumeLastCreatedSession=true is scoped by sessionSelector', async () => {
@@ -200,6 +252,44 @@ test('resumeLastCreatedSession=true falls back to spawn when no prior session', 
 
   assert.equal(adapter.spawnCalls.length, 1);
   assert.equal(adapter.resumeCalls.length, 0);
+});
+
+test('resume rebuilds a recorded built-in adapter when it is not cached', async () => {
+  const home = isolatedHome();
+  const cwd = mkdtempSync(join(tmpdir(), 'sc-cwd-'));
+  const current = new StubAdapter('claude-code');
+  const prevCodexBin = process.env.CODEX_BIN;
+  const prevScenario = process.env.SCENARIO;
+
+  process.env.CODEX_BIN = FAKE_CODEX;
+  process.env.SCENARIO = 'ok';
+  recordSpawn({
+    cwd: realpathSync(cwd),
+    appId: 'app',
+    adapter: 'codex',
+    sessionId: 'codex-recorded',
+  }, { root: home, file: join(home, 'registry.json') });
+
+  try {
+    const sc = withProcessCwd(cwd, () => createSuperconnector({ adapter: current, cwd }));
+    const messages = await drain(sc.resume({
+      prompt: 'continue',
+      appId: 'app',
+      sessionId: 'codex-recorded',
+    }));
+
+    assert.equal(current.resumeCalls.length, 0);
+    assert.deepEqual(
+      messages.map((m) => m.type),
+      ['system', 'assistant', 'tool_use', 'tool_result', 'result'],
+    );
+    assert.equal(messages[0]!.sessionId, 'codex-recorded');
+  } finally {
+    if (prevCodexBin === undefined) delete process.env.CODEX_BIN;
+    else process.env.CODEX_BIN = prevCodexBin;
+    if (prevScenario === undefined) delete process.env.SCENARIO;
+    else process.env.SCENARIO = prevScenario;
+  }
 });
 
 test('setAdapter overrides adapter', () => {

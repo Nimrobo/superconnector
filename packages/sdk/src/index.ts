@@ -77,19 +77,33 @@ export function createSuperconnector(opts: CreateOptions = {}): Superconnector {
   const cwd = resolveCreateCwd(opts.cwd);
   const config = resolveConfig(cwd).merged;
   let adapter: Adapter | null = null;
+  const adaptersByKind = new Map<AdapterKind, Adapter>();
+
+  const rememberAdapter = (next: Adapter): Adapter => {
+    adaptersByKind.set(next.kind, next);
+    return next;
+  };
 
   if (opts.adapter) {
-    adapter = typeof opts.adapter === 'string' ? buildAdapter(opts.adapter, config) : opts.adapter;
+    adapter = rememberAdapter(
+      typeof opts.adapter === 'string' ? buildAdapter(opts.adapter, config) : opts.adapter,
+    );
   } else if (config.preferredAdapter) {
-    adapter = buildAdapter(config.preferredAdapter, config);
+    adapter = rememberAdapter(buildAdapter(config.preferredAdapter, config));
   } else {
     const detected = detectAdapter(cwd);
-    if (detected) adapter = buildAdapter(detected, config);
+    if (detected) adapter = rememberAdapter(buildAdapter(detected, config));
   }
 
   const requireAdapter = (): Adapter => {
     if (!adapter) throw new AdapterNotSetError();
     return adapter;
+  };
+
+  const adapterForRecordedSession = (kind: AdapterKind): Adapter => {
+    const existing = adaptersByKind.get(kind);
+    if (existing) return existing;
+    return rememberAdapter(buildAdapter(kind, config));
   };
 
   return {
@@ -100,7 +114,9 @@ export function createSuperconnector(opts: CreateOptions = {}): Superconnector {
       return requireAdapter();
     },
     setAdapter(next: Adapter | AdapterKind): void {
-      adapter = typeof next === 'string' ? buildAdapter(next, config) : next;
+      adapter = rememberAdapter(
+        typeof next === 'string' ? buildAdapter(next, config) : next,
+      );
     },
     listSessions(filter?: { appId?: string; sessionSelector?: string }): SessionRecord[] {
       return listSessionsImpl({
@@ -110,7 +126,6 @@ export function createSuperconnector(opts: CreateOptions = {}): Superconnector {
       });
     },
     spawn(spawnOpts: SpawnOptions): AsyncIterable<AgentMessage> {
-      const a = requireAdapter();
       if (spawnOpts.permissionMode === undefined && config.permissionMode !== undefined) {
         spawnOpts = { ...spawnOpts, permissionMode: config.permissionMode };
       }
@@ -122,7 +137,7 @@ export function createSuperconnector(opts: CreateOptions = {}): Superconnector {
         });
         if (latest) {
           return runResume(
-            a,
+            adapterForRecordedSession(latest.adapter),
             {
               prompt: spawnOpts.prompt,
               appId: spawnOpts.appId,
@@ -143,14 +158,14 @@ export function createSuperconnector(opts: CreateOptions = {}): Superconnector {
           );
         }
       }
+      const a = requireAdapter();
       return runSpawn(a, spawnOpts, cwd);
     },
     resume(resumeOpts: ResumeOptions): AsyncIterable<AgentMessage> {
-      const a = requireAdapter();
       if (resumeOpts.permissionMode === undefined && config.permissionMode !== undefined) {
         resumeOpts = { ...resumeOpts, permissionMode: config.permissionMode };
       }
-      const found = listSessionsImpl({ cwd, appId: resumeOpts.appId }).some(
+      const found = listSessionsImpl({ cwd, appId: resumeOpts.appId }).find(
         (s) =>
           s.sessionId === resumeOpts.sessionId &&
           (resumeOpts.sessionSelector === undefined || s.sessionSelector === resumeOpts.sessionSelector),
@@ -158,6 +173,7 @@ export function createSuperconnector(opts: CreateOptions = {}): Superconnector {
       if (!found) {
         throw new UnknownSessionError(resumeOpts.sessionId, resumeOpts.appId, cwd, resumeOpts.sessionSelector);
       }
+      const a = adapterForRecordedSession(found.adapter);
       return runResume(a, resumeOpts, cwd);
     },
   };
