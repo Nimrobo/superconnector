@@ -7,7 +7,10 @@ Load this reference when implementing concrete Superconnector integration code i
 ```ts
 import {
   createSuperconnector,
+  AdapterNotSetError,
   PermissionRequiredError,
+  UnknownSessionError,
+  type AdapterKind,
   type AgentMessage,
 } from "@nimrobo/superconnector";
 
@@ -17,10 +20,15 @@ export interface AgentRunEvent {
   content: unknown;
 }
 
-export function createAgentService(args: { cwd: string; appId: string; sessionSelector?: string }) {
+export interface AgentServiceOptions {
+  appId: string;
+  sessionSelector?: string;
+  adapter?: AdapterKind;
+}
+
+export function createAgentService(args: AgentServiceOptions) {
   const sc = createSuperconnector({
-    cwd: args.cwd,
-    adapter: "claude-code",
+    ...(args.adapter !== undefined ? { adapter: args.adapter } : {}),
   });
 
   return {
@@ -66,6 +74,38 @@ function normalizeMessage(msg: AgentMessage): AgentRunEvent {
   };
 }
 ```
+
+## Adapter Selection
+
+Use an explicit adapter when the app owns the runtime choice:
+
+```ts
+const sc = createSuperconnector({
+  adapter: "claude-code",
+});
+```
+
+Use config/detection when users or workspace setup should choose the runtime:
+
+```ts
+const sc = createSuperconnector();
+```
+
+Pass `cwd` only when intentionally narrowing the agent process to the current process directory or a child directory:
+
+```ts
+const sc = createSuperconnector({ cwd: "packages/app" });
+```
+
+Detection requires both a binary and a project marker:
+
+| Adapter | Binary | Marker |
+| --- | --- | --- |
+| `claude-code` | `claude` or `CLAUDE_BIN` | `CLAUDE.md` or `.claude` |
+| `opencode` | `opencode` or `OPENCODE_BIN` | `opencode.json` or `.opencode` |
+| `codex` | `codex` or `CODEX_BIN` | `AGENTS.md` or `.codex` |
+
+Choose `claude-code` when the app needs approval callbacks. OpenCode and Codex can run sessions, but they do not currently support Superconnector approval callbacks.
 
 ## Continue Last Session
 
@@ -114,7 +154,7 @@ Keep session selection in app state. Do not ask users to paste raw resume comman
 
 ## Approval Requests
 
-Use approvals when the app wants an edit-capable run while still letting the user decide on tool requests.
+Use approvals only with `claude-code` when the app wants an edit-capable run while still letting the user decide on tool requests.
 
 ```ts
 for await (const msg of sc.spawn({
@@ -123,7 +163,7 @@ for await (const msg of sc.spawn({
   permissionMode: "acceptEdits",
   approvalTimeoutMs: 60_000,
   onApprovalRequest: async (request) => {
-    if (request.cwd !== workspaceCwd) {
+    if (request.cwd !== process.cwd()) {
       return { decision: "deny", message: "Workspace mismatch" };
     }
 
@@ -142,7 +182,12 @@ for await (const msg of sc.spawn({
 }
 ```
 
-Return `deny` when the app cannot confidently associate the request with the visible user/workspace/session.
+Return `deny` when the app cannot confidently associate the request with the visible user, workspace, or session.
+
+Adapter limits:
+
+- `opencode` emits an advisory `superconnector` event if `onApprovalRequest` is provided, but does not call the callback.
+- `codex` throws `AdapterFailedError` if `onApprovalRequest` is provided.
 
 ## Error Mapping
 
@@ -157,6 +202,23 @@ try {
       code: "permission_required",
       message: error.message,
       sessionId: error.sessionId,
+      resumeCommand: error.resumeCommand,
+    });
+    return;
+  }
+
+  if (error instanceof UnknownSessionError) {
+    publishError({
+      code: "unknown_session",
+      message: error.message,
+    });
+    return;
+  }
+
+  if (error instanceof AdapterNotSetError) {
+    publishError({
+      code: "adapter_not_set",
+      message: error.message,
     });
     return;
   }
@@ -168,7 +230,7 @@ try {
 }
 ```
 
-Also handle `UnknownSessionError` when resuming explicit session IDs and `AdapterNotSetError` if app configuration can omit adapter selection.
+Also handle app-level validation errors before calling Superconnector, such as unknown workspaces or user access denial.
 
 ## Cancellation
 
@@ -187,7 +249,7 @@ const run = (async () => {
   }
 })();
 
-// Wire this to a UI stop button, job cancellation, or request close event.
+// Wire this to a UI stop button, job cancellation, request close, or shutdown path.
 controller.abort();
 
 await run;
@@ -210,6 +272,10 @@ export class StubAdapter implements Adapter {
   spawnCalls: SpawnOptions[] = [];
   resumeCalls: ResumeOptions[] = [];
   nextSessionId = "stub-session-1";
+
+  detect(): boolean {
+    return true;
+  }
 
   spawn(opts: SpawnOptions): AsyncIterable<AgentMessage> {
     this.spawnCalls.push(opts);
@@ -234,7 +300,7 @@ export class StubAdapter implements Adapter {
 
 ```ts
 import assert from "node:assert/strict";
-import { mkdtempSync } from "node:fs";
+import { mkdirSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createSuperconnector } from "@nimrobo/superconnector";
@@ -242,9 +308,13 @@ import { createSuperconnector } from "@nimrobo/superconnector";
 const home = mkdtempSync(join(tmpdir(), "sc-test-home-"));
 process.env.SUPERCONNECTOR_HOME = home;
 
-const cwd = mkdtempSync(join(tmpdir(), "sc-test-cwd-"));
+const base = mkdtempSync(join(tmpdir(), "sc-test-cwd-"));
+const cwd = join(base, "workspace");
+mkdirSync(cwd);
+process.chdir(base);
+
 const adapter = new StubAdapter();
-const sc = createSuperconnector({ cwd, adapter });
+const sc = createSuperconnector({ cwd: "workspace", adapter });
 
 const seen: string[] = [];
 for await (const msg of sc.spawn({
@@ -259,7 +329,7 @@ const sessions = sc.listSessions({ appId: "test-app", sessionSelector: "workspac
 assert.equal(sessions.length, 1);
 ```
 
-Use a temporary `cwd` and `SUPERCONNECTOR_HOME` per test file or per test case to avoid leaking sessions between tests.
+Use a temporary `SUPERCONNECTOR_HOME` per test file or per test case to avoid leaking sessions. If a test uses a temporary `cwd`, first `chdir` into its base and pass only that base or a child path.
 
 ## Config Notes
 
@@ -270,7 +340,9 @@ Example local config at `<cwd>/.superconnector/config.json`:
   "preferredAdapter": "claude-code",
   "permissionMode": "read",
   "models": {
-    "claude-code": "configured-model"
+    "claude-code": "sonnet",
+    "opencode": "anthropic/claude-sonnet-4-5",
+    "codex": "gpt-5.3-codex"
   }
 }
 ```

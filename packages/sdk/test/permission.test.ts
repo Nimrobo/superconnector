@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, existsSync } from 'node:fs';
+import { mkdtempSync, readFileSync, existsSync, realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -12,6 +12,7 @@ import { startApprovalHost } from '../src/approval/host.js';
 import { sessionLogPath, readSessionLog } from '../src/registry.js';
 import { PermissionRequiredError } from '../src/errors.js';
 import type { Adapter, AgentMessage, ResumeOptions, SpawnOptions } from '../src/types.js';
+import { withProcessCwd } from './test-util.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const FAKE_CLAUDE = join(here, 'fake-claude.mjs');
@@ -58,7 +59,7 @@ class MetaStubAdapter implements Adapter {
 test('session log is written with metadata after spawn', async () => {
   isolatedHome();
   const cwd = mkdtempSync(join(tmpdir(), 'sc-cwd-'));
-  const sc = createSuperconnector({ adapter: new MetaStubAdapter(), cwd });
+  const sc = withProcessCwd(cwd, () => createSuperconnector({ adapter: new MetaStubAdapter(), cwd }));
 
   const seenTypes: string[] = [];
   for await (const m of sc.spawn({ prompt: 'hello world', appId: 'app' })) {
@@ -70,7 +71,7 @@ test('session log is written with metadata after spawn', async () => {
   const log = readSessionLog('meta-sess-1');
   assert.ok(log, 'session log should exist');
   assert.equal(log!.sessionId, 'meta-sess-1');
-  assert.equal(log!.cwd, cwd);
+  assert.equal(log!.cwd, realpathSync(cwd));
   assert.equal(log!.binPath, '/fake/claude');
   assert.equal(log!.permissionMode, 'acceptEdits');
   assert.equal(log!.approvalServerEnabled, false);
@@ -113,7 +114,7 @@ test('PermissionRequiredError thrown by adapter is recorded in session log', asy
     }
   }
 
-  const sc = createSuperconnector({ adapter: new FailingAdapter(), cwd });
+  const sc = withProcessCwd(cwd, () => createSuperconnector({ adapter: new FailingAdapter(), cwd }));
   await assert.rejects(
     async () => {
       for await (const _ of sc.spawn({ prompt: 'p', appId: 'app' })) {
@@ -336,7 +337,7 @@ test('ClaudeCodeAdapter spawn writes session log + appends --permission-mode fla
   process.env.FAKE_SESSION_ID = 'adapter-sess-1';
   try {
     const adapter = new ClaudeCodeAdapter({ binPath: FAKE_CLAUDE });
-    const sc = createSuperconnector({ adapter, cwd });
+    const sc = withProcessCwd(cwd, () => createSuperconnector({ adapter, cwd }));
     for await (const _ of sc.spawn({ prompt: 'hi', appId: 'app' })) {
       /* drain */
     }
@@ -362,7 +363,7 @@ test('ClaudeCodeAdapter with permissionMode "read" passes plan flag', async () =
   process.env.FAKE_SESSION_ID = 'adapter-sess-2';
   try {
     const adapter = new ClaudeCodeAdapter({ binPath: FAKE_CLAUDE });
-    const sc = createSuperconnector({ adapter, cwd });
+    const sc = withProcessCwd(cwd, () => createSuperconnector({ adapter, cwd }));
     for await (const _ of sc.spawn({ prompt: 'r', appId: 'app', permissionMode: 'read' })) {
       /* drain */
     }
@@ -385,7 +386,7 @@ test('ClaudeCodeAdapter with onApprovalRequest enables approval server', async (
   process.env.FAKE_SESSION_ID = 'adapter-sess-3';
   try {
     const adapter = new ClaudeCodeAdapter({ binPath: FAKE_CLAUDE });
-    const sc = createSuperconnector({ adapter, cwd });
+    const sc = withProcessCwd(cwd, () => createSuperconnector({ adapter, cwd }));
     for await (const _ of sc.spawn({
       prompt: 'a',
       appId: 'app',
