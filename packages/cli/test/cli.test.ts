@@ -34,14 +34,15 @@ function onceData(child: ChildProcessWithoutNullStreams, pattern: RegExp): Promi
 test('config CLI serves config API and persists local config', async () => {
   const home = mkdtempSync(join(tmpdir(), 'sc-cli-home-'));
   const cwd = mkdtempSync(join(tmpdir(), 'sc-cli-cwd-'));
-  const projectRoot = resolve('.');
+  const packageRoot = resolve('.');
+  const repoRoot = resolve(packageRoot, '..', '..');
   const distCli = resolve('dist/cli.js');
   const args = existsSync(distCli)
     ? [distCli, 'config', '--port', '0', '--no-open']
     : [
         '--import',
-        `file://${join(projectRoot, 'node_modules', 'tsx', 'dist', 'esm', 'index.mjs')}`,
-        join(projectRoot, 'src', 'cli.ts'),
+        `file://${join(repoRoot, 'node_modules', 'tsx', 'dist', 'esm', 'index.mjs')}`,
+        join(packageRoot, 'src', 'cli.ts'),
         'config',
         '--port',
         '0',

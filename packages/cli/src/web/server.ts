@@ -4,11 +4,21 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomBytes } from 'node:crypto';
-import { ClaudeCodeAdapter } from '../adapters/claude-code/index.js';
-import { CodexAdapter } from '../adapters/codex/index.js';
-import { OpenCodeAdapter } from '../adapters/opencode/index.js';
-import { localConfigPath, readConfig, resolveConfig, writeConfig, type SuperconnectorConfig } from '../config.js';
-import type { Adapter, AdapterKind, AdapterModel } from '../types.js';
+import {
+  ClaudeCodeAdapter,
+  CodexAdapter,
+  OpenCodeAdapter,
+  type Adapter,
+  type AdapterKind,
+  type AdapterModel,
+} from '@nimrobo/superconnector';
+import {
+  localConfigPath,
+  readConfig,
+  resolveConfig,
+  writeConfig,
+  type SuperconnectorConfig,
+} from '@nimrobo/superconnector/config';
 
 export interface StartConfigServerOptions {
   cwd: string;

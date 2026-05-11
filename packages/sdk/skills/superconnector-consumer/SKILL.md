@@ -1,15 +1,15 @@
 ---
 name: superconnector-consumer
-description: Use when integrating the superconnector npm package into a consumer app, adding agent session spawning/resume, streaming agent messages, permission approval flows, cancellation, or tests for an app that consumes Superconnector.
+description: Use when integrating the @nimrobo/superconnector npm package into a consumer app, adding agent session spawning/resume, streaming agent messages, permission approval flows, cancellation, or tests for an app that consumes Superconnector.
 ---
 
 # Superconnector Consumer Integration
 
-Use this skill to integrate `superconnector` into an application that wants to spawn, resume, and stream coding-agent sessions.
+Use this skill to integrate `@nimrobo/superconnector` into an application that wants to spawn, resume, and stream coding-agent sessions.
 
 ## First Pass
 
-1. Inspect the consumer app's runtime boundary. `superconnector` is a Node package that starts agent processes, so keep it in a backend, CLI, Electron main process, server action, or other trusted Node runtime.
+1. Inspect the consumer app's runtime boundary. `@nimrobo/superconnector` is a Node package that starts agent processes, so keep it in a backend, CLI, Electron main process, server action, or other trusted Node runtime.
 2. Identify the workspace directory that should become `cwd`. This should be the repo or project directory the agent will work in, not a temporary request directory.
 3. Choose a stable `appId` for the consumer app or feature. Use the same id for spawn, resume, and session listing.
 4. Choose a `sessionSelector` only when the app needs a per-workspace, thread, tab, or user-visible conversation scope inside the same `appId`.
@@ -29,7 +29,7 @@ Use this skill to integrate `superconnector` into an application that wants to s
 
 ## Config And State
 
-- `superconnector` groups sessions by `cwd` and stable `appId`; `sessionSelector` narrows session lookup inside that app without creating a separate app entry.
+- `@nimrobo/superconnector` groups sessions by `cwd` and stable `appId`; `sessionSelector` narrows session lookup inside that app without creating a separate app entry.
 - Local config lives under `.superconnector/config.json` in the selected `cwd`; global state defaults to `~/.superconnector`.
 - Set `SUPERCONNECTOR_HOME` in tests to isolate registry and config state.
 - The `superconnector config` CLI opens the package's config UI for adapter, permission, and model settings.
