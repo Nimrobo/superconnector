@@ -1,5 +1,6 @@
 import type {
   Adapter,
+  AdapterModel,
   AdapterKind,
   AgentMessage,
   PermissionMode,
@@ -59,6 +60,13 @@ export class ClaudeCodeAdapter implements Adapter {
       opts,
       cwd,
     );
+  }
+
+  async listModels(_cwd: string): Promise<AdapterModel[]> {
+    return [
+      { id: 'sonnet', label: 'Sonnet' },
+      { id: 'opus', label: 'Opus' },
+    ];
   }
 
   private async *run(

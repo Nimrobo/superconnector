@@ -52,10 +52,17 @@ export interface SessionRecord {
   lastUsedAt: string;
 }
 
+export interface AdapterModel {
+  id: string;
+  label?: string;
+  description?: string;
+}
+
 export interface Adapter {
   kind: AdapterKind;
   spawn(opts: SpawnOptions, cwd: string): AsyncIterable<AgentMessage>;
   resume(opts: ResumeOptions, cwd: string): AsyncIterable<AgentMessage>;
+  listModels?(cwd: string): Promise<AdapterModel[]>;
 }
 
 export interface Superconnector {

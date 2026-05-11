@@ -4,7 +4,11 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomBytes } from 'node:crypto';
+import { ClaudeCodeAdapter } from '../adapters/claude-code/index.js';
+import { CodexAdapter } from '../adapters/codex/index.js';
+import { OpenCodeAdapter } from '../adapters/opencode/index.js';
 import { localConfigPath, readConfig, resolveConfig, writeConfig, type SuperconnectorConfig } from '../config.js';
+import type { Adapter, AdapterKind, AdapterModel } from '../types.js';
 
 export interface StartConfigServerOptions {
   cwd: string;
@@ -16,6 +20,34 @@ export interface ConfigServerHandle {
   url: string;
   port: number;
   close: () => Promise<void>;
+}
+
+const ADAPTERS: AdapterKind[] = ['claude-code', 'opencode', 'codex'];
+
+function createAdapter(kind: AdapterKind): Adapter {
+  switch (kind) {
+    case 'claude-code':
+      return new ClaudeCodeAdapter();
+    case 'opencode':
+      return new OpenCodeAdapter();
+    case 'codex':
+      return new CodexAdapter();
+  }
+}
+
+async function collectModelOptions(cwd: string): Promise<Partial<Record<AdapterKind, AdapterModel[]>>> {
+  const modelOptions: Partial<Record<AdapterKind, AdapterModel[]>> = {};
+  for (const kind of ADAPTERS) {
+    const adapter = createAdapter(kind);
+    if (!adapter.listModels) continue;
+    try {
+      const models = await adapter.listModels(cwd);
+      if (models.length > 0) modelOptions[kind] = models;
+    } catch {
+      // Model suggestions are advisory; config loading should still work if discovery fails.
+    }
+  }
+  return modelOptions;
 }
 
 function resolveIndexHtml(): string {
@@ -71,9 +103,11 @@ export async function startConfigServer(opts: StartConfigServerOptions): Promise
       }
       if (req.method === 'GET' && path === '/api/config') {
         const resolved = resolveConfig(cwd);
+        const modelOptions = await collectModelOptions(cwd);
         sendJson(res, 200, {
           cwd,
-          adapters: ['claude-code', 'opencode', 'codex'],
+          adapters: ADAPTERS,
+          modelOptions,
           globalPath: resolved.globalPath,
           localPath: resolved.localPath,
           global: resolved.global ?? {},
