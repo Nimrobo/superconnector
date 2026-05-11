@@ -28,5 +28,14 @@
     "cli",
     "superconnector"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Nimrobo/superconnector.git",
+    "directory": "packages/cli"
+  },
+  "bugs": {
+    "url": "https://github.com/Nimrobo/superconnector/issues"
+  },
+  "homepage": "https://nimroboai.com",
   "license": "MIT"
 }

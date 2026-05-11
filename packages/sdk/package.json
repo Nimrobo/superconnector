@@ -49,5 +49,14 @@
     "session",
     "transport"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Nimrobo/superconnector.git",
+    "directory": "packages/sdk"
+  },
+  "bugs": {
+    "url": "https://github.com/Nimrobo/superconnector/issues"
+  },
+  "homepage": "https://nimroboai.com",
   "license": "MIT"
 }
