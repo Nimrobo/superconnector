@@ -5,10 +5,8 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomBytes } from 'node:crypto';
 import {
-  ClaudeCodeAdapter,
-  CodexAdapter,
-  OpenCodeAdapter,
-  type Adapter,
+  ADAPTER_KINDS,
+  createBuiltinAdapter,
   type AdapterKind,
   type AdapterModel,
 } from '@nimrobo/superconnector';
@@ -32,23 +30,10 @@ export interface ConfigServerHandle {
   close: () => Promise<void>;
 }
 
-const ADAPTERS: AdapterKind[] = ['claude-code', 'opencode', 'codex'];
-
-function createAdapter(kind: AdapterKind): Adapter {
-  switch (kind) {
-    case 'claude-code':
-      return new ClaudeCodeAdapter();
-    case 'opencode':
-      return new OpenCodeAdapter();
-    case 'codex':
-      return new CodexAdapter();
-  }
-}
-
 async function collectModelOptions(cwd: string): Promise<Partial<Record<AdapterKind, AdapterModel[]>>> {
   const modelOptions: Partial<Record<AdapterKind, AdapterModel[]>> = {};
-  for (const kind of ADAPTERS) {
-    const adapter = createAdapter(kind);
+  for (const kind of ADAPTER_KINDS) {
+    const adapter = createBuiltinAdapter(kind);
     if (!adapter.listModels) continue;
     try {
       const models = await adapter.listModels(cwd);
@@ -116,7 +101,7 @@ export async function startConfigServer(opts: StartConfigServerOptions): Promise
         const modelOptions = await collectModelOptions(cwd);
         sendJson(res, 200, {
           cwd,
-          adapters: ADAPTERS,
+          adapters: ADAPTER_KINDS,
           modelOptions,
           globalPath: resolved.globalPath,
           localPath: resolved.localPath,

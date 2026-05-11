@@ -3,6 +3,7 @@ import { ClaudeCodeAdapter } from './adapters/claude-code/index.js';
 import { CodexAdapter } from './adapters/codex/index.js';
 import { buildCodexResumeCommand } from './adapters/codex/process.js';
 import { OpenCodeAdapter } from './adapters/opencode/index.js';
+import { createBuiltinAdapter } from './adapters/registry.js';
 import { resolveConfig, type SuperconnectorConfig } from './config.js';
 import { detectAdapter } from './detect.js';
 import { AdapterNotSetError, PermissionRequiredError, UnknownSessionError } from './errors.js';
@@ -36,6 +37,7 @@ export { detectAdapter } from './detect.js';
 export { ClaudeCodeAdapter } from './adapters/claude-code/index.js';
 export { OpenCodeAdapter } from './adapters/opencode/index.js';
 export { CodexAdapter } from './adapters/codex/index.js';
+export { ADAPTER_KINDS, createBuiltinAdapter, createBuiltinAdapters, isAdapterKind } from './adapters/registry.js';
 
 export interface CreateOptions {
   adapter?: Adapter | AdapterKind;
@@ -43,15 +45,7 @@ export interface CreateOptions {
 }
 
 function buildAdapter(kind: AdapterKind, config: SuperconnectorConfig): Adapter {
-  const model = config.models?.[kind];
-  switch (kind) {
-    case 'claude-code':
-      return new ClaudeCodeAdapter(model !== undefined ? { model } : {});
-    case 'opencode':
-      return new OpenCodeAdapter(model !== undefined ? { model } : {});
-    case 'codex':
-      return new CodexAdapter(model !== undefined ? { model } : {});
-  }
+  return createBuiltinAdapter(kind, config.models !== undefined ? { models: config.models } : {});
 }
 
 export function createSuperconnector(opts: CreateOptions = {}): Superconnector {

@@ -25,6 +25,9 @@ function isolatedHome(): string {
 class MetaStubAdapter implements Adapter {
   readonly kind = 'claude-code' as const;
   nextSessionId = 'meta-sess-1';
+  detect(_cwd: string): boolean {
+    return false;
+  }
   spawn(_opts: SpawnOptions, cwd: string): AsyncIterable<AgentMessage> {
     const sid = this.nextSessionId;
     return (async function* () {
@@ -85,6 +88,9 @@ test('PermissionRequiredError thrown by adapter is recorded in session log', asy
 
   class FailingAdapter implements Adapter {
     readonly kind = 'claude-code' as const;
+    detect(_cwd: string): boolean {
+      return false;
+    }
     spawn(_o: SpawnOptions, c: string): AsyncIterable<AgentMessage> {
       return (async function* () {
         yield {

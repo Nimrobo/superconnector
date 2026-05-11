@@ -13,6 +13,10 @@ class StubAdapter implements Adapter {
   resumeCalls: ResumeOptions[] = [];
   nextSessionId = 'stub-sess-1';
 
+  detect(_cwd: string): boolean {
+    return false;
+  }
+
   spawn(opts: SpawnOptions, _cwd: string): AsyncIterable<AgentMessage> {
     this.spawnCalls.push(opts);
     const sid = this.nextSessionId;

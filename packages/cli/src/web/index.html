@@ -115,7 +115,7 @@
 </div>
 <script>
 const TOKEN = new URLSearchParams(location.search).get('t') || '';
-const ADAPTERS = ['claude-code', 'opencode', 'codex'];
+let ADAPTERS = [];
 
 function el(tag, attrs = {}, children = []) {
   const e = document.createElement(tag);
@@ -198,6 +198,7 @@ async function load() {
   const res = await fetch(`/api/config?t=${encodeURIComponent(TOKEN)}`);
   if (!res.ok) throw new Error(`load failed: ${res.status}`);
   const data = await res.json();
+  ADAPTERS = data.adapters || [];
   for (const card of document.querySelectorAll('.card')) {
     const scope = card.dataset.scope;
     card.querySelector('[data-path]').textContent = scope === 'global' ? data.globalPath : data.localPath;
