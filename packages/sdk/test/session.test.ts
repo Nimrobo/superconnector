@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { createSuperconnector } from '../src/index.js';
 import type { Adapter, AgentMessage, ResumeOptions, SpawnOptions } from '../src/types.js';
 import { UnknownSessionError } from '../src/errors.js';
+import { withProcessCwd } from './test-util.js';
 
 class StubAdapter implements Adapter {
   readonly kind = 'claude-code' as const;
@@ -47,7 +48,7 @@ test('spawn streams messages and records the session', async () => {
   isolatedHome();
   const cwd = mkdtempSync(join(tmpdir(), 'sc-cwd-'));
   const adapter = new StubAdapter();
-  const sc = createSuperconnector({ adapter, cwd });
+  const sc = withProcessCwd(cwd, () => createSuperconnector({ adapter, cwd }));
 
   const types: string[] = [];
   for await (const m of sc.spawn({ prompt: 'go', appId: 'myapp' })) {
@@ -63,7 +64,7 @@ test('resume rejects unknown sessionId', async () => {
   isolatedHome();
   const cwd = mkdtempSync(join(tmpdir(), 'sc-cwd-'));
   const adapter = new StubAdapter();
-  const sc = createSuperconnector({ adapter, cwd });
+  const sc = withProcessCwd(cwd, () => createSuperconnector({ adapter, cwd }));
 
   await assert.rejects(async () => {
     for await (const _ of sc.resume({ prompt: 'x', appId: 'app', sessionId: 'nope' })) {
@@ -76,7 +77,7 @@ test('resume works for a session this app created', async () => {
   isolatedHome();
   const cwd = mkdtempSync(join(tmpdir(), 'sc-cwd-'));
   const adapter = new StubAdapter();
-  const sc = createSuperconnector({ adapter, cwd });
+  const sc = withProcessCwd(cwd, () => createSuperconnector({ adapter, cwd }));
 
   for await (const _ of sc.spawn({ prompt: 'go', appId: 'app' })) {
     // drain
@@ -101,7 +102,7 @@ test('resume rejects a session when provided sessionSelector does not match', as
   isolatedHome();
   const cwd = mkdtempSync(join(tmpdir(), 'sc-cwd-'));
   const adapter = new StubAdapter();
-  const sc = createSuperconnector({ adapter, cwd });
+  const sc = withProcessCwd(cwd, () => createSuperconnector({ adapter, cwd }));
 
   for await (const _ of sc.spawn({ prompt: 'go', appId: 'app', sessionSelector: 'thread-a' })) {
     // drain
@@ -126,7 +127,7 @@ test('resumeLastCreatedSession=true resumes prior session if any', async () => {
   isolatedHome();
   const cwd = mkdtempSync(join(tmpdir(), 'sc-cwd-'));
   const adapter = new StubAdapter();
-  const sc = createSuperconnector({ adapter, cwd });
+  const sc = withProcessCwd(cwd, () => createSuperconnector({ adapter, cwd }));
 
   for await (const _ of sc.spawn({ prompt: 'first', appId: 'app' })) { /* drain */ }
   adapter.nextSessionId = 'stub-sess-2';
@@ -146,7 +147,7 @@ test('resumeLastCreatedSession=true is scoped by sessionSelector', async () => {
   isolatedHome();
   const cwd = mkdtempSync(join(tmpdir(), 'sc-cwd-'));
   const adapter = new StubAdapter();
-  const sc = createSuperconnector({ adapter, cwd });
+  const sc = withProcessCwd(cwd, () => createSuperconnector({ adapter, cwd }));
 
   for await (const _ of sc.spawn({ prompt: 'first', appId: 'app', sessionSelector: 'thread-a' })) { /* drain */ }
   adapter.nextSessionId = 'stub-sess-2';
@@ -170,7 +171,7 @@ test('resumeLastCreatedSession=true without selector ignores selector-scoped ses
   isolatedHome();
   const cwd = mkdtempSync(join(tmpdir(), 'sc-cwd-'));
   const adapter = new StubAdapter();
-  const sc = createSuperconnector({ adapter, cwd });
+  const sc = withProcessCwd(cwd, () => createSuperconnector({ adapter, cwd }));
 
   for await (const _ of sc.spawn({ prompt: 'first', appId: 'app', sessionSelector: 'thread-a' })) { /* drain */ }
   adapter.nextSessionId = 'stub-sess-2';
@@ -189,7 +190,7 @@ test('resumeLastCreatedSession=true falls back to spawn when no prior session', 
   isolatedHome();
   const cwd = mkdtempSync(join(tmpdir(), 'sc-cwd-'));
   const adapter = new StubAdapter();
-  const sc = createSuperconnector({ adapter, cwd });
+  const sc = withProcessCwd(cwd, () => createSuperconnector({ adapter, cwd }));
 
   for await (const _ of sc.spawn({
     prompt: 'first',
@@ -204,7 +205,7 @@ test('resumeLastCreatedSession=true falls back to spawn when no prior session', 
 test('setAdapter overrides adapter', () => {
   isolatedHome();
   const cwd = mkdtempSync(join(tmpdir(), 'sc-cwd-'));
-  const sc = createSuperconnector({ adapter: new StubAdapter(), cwd });
+  const sc = withProcessCwd(cwd, () => createSuperconnector({ adapter: new StubAdapter(), cwd }));
   sc.setAdapter('codex');
   assert.equal(sc.getAdapter().kind, 'codex');
 });

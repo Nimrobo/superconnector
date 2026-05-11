@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -9,6 +9,7 @@ import { buildCodexResumeCommand, runCodex } from '../src/adapters/codex/process
 import { AdapterFailedError } from '../src/errors.js';
 import { createSuperconnector, readSessionLog } from '../src/index.js';
 import type { AgentMessage } from '../src/types.js';
+import { withProcessCwd } from './test-util.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const FAKE_CODEX = join(here, 'fake-codex.mjs');
@@ -88,21 +89,22 @@ test('CodexAdapter spawn builds codex exec command with workspace-write by defau
     isolatedHome();
     const cwd = tmpCwd();
     const adapter = new CodexAdapter({ binPath: FAKE_CODEX });
-    const sc = createSuperconnector({ adapter, cwd });
+    const sc = withProcessCwd(cwd, () => createSuperconnector({ adapter, cwd }));
     await drain(sc.spawn({ prompt: 'hi', appId: 'app' }));
 
     const log = readSessionLog('codex-sess-1');
     assert.ok(log);
     assert.deepEqual(log!.args, ['exec', '--json', '--sandbox', 'workspace-write', 'hi']);
-    assert.equal(log!.resumeCommand, buildCodexResumeCommand(cwd, 'codex-sess-1'));
+    assert.equal(log!.resumeCommand, buildCodexResumeCommand(realpathSync(cwd), 'codex-sess-1'));
   });
 });
 
 test('CodexAdapter spawn maps read permission mode to read-only sandbox', async () => {
   await withScenario('ok', async () => {
     isolatedHome();
+    const cwd = tmpCwd();
     const adapter = new CodexAdapter({ binPath: FAKE_CODEX });
-    const sc = createSuperconnector({ adapter, cwd: tmpCwd() });
+    const sc = withProcessCwd(cwd, () => createSuperconnector({ adapter, cwd }));
     await drain(sc.spawn({ prompt: 'read', appId: 'app', permissionMode: 'read' }));
 
     const log = readSessionLog('codex-sess-1');
@@ -115,8 +117,9 @@ test('CodexAdapter spawn maps read permission mode to read-only sandbox', async 
 test('CodexAdapter appends configured model before the prompt', async () => {
   await withScenario('ok', async () => {
     isolatedHome();
+    const cwd = tmpCwd();
     const adapter = new CodexAdapter({ binPath: FAKE_CODEX, model: 'configured-codex' });
-    const sc = createSuperconnector({ adapter, cwd: tmpCwd() });
+    const sc = withProcessCwd(cwd, () => createSuperconnector({ adapter, cwd }));
     await drain(sc.spawn({ prompt: 'model prompt', appId: 'app' }));
 
     const log = readSessionLog('codex-sess-1');
@@ -141,7 +144,8 @@ test('CodexAdapter does not duplicate model when extraArgs already specify one',
       model: 'configured-codex',
       extraArgs: ['--model', 'extra-codex'],
     });
-    const sc = createSuperconnector({ adapter, cwd: tmpCwd() });
+    const cwd = tmpCwd();
+    const sc = withProcessCwd(cwd, () => createSuperconnector({ adapter, cwd }));
     await drain(sc.spawn({ prompt: 'model prompt', appId: 'app' }));
 
     const log = readSessionLog('codex-sess-1');

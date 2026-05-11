@@ -12,6 +12,7 @@ import {
 } from '../src/config.js';
 import { ClaudeCodeAdapter } from '../src/adapters/claude-code/index.js';
 import { createSuperconnector } from '../src/index.js';
+import { withProcessCwd } from './test-util.js';
 
 function withHome<T>(fn: (home: string) => T): T {
   const prev = process.env.SUPERCONNECTOR_HOME;
@@ -92,7 +93,7 @@ test('createSuperconnector applies preferred adapter and configured model', () =
       models: { 'claude-code': 'configured-model' },
     });
 
-    const adapter = createSuperconnector({ cwd }).getAdapter();
+    const adapter = withProcessCwd(cwd, () => createSuperconnector({ cwd }).getAdapter());
     assert.equal(adapter.kind, 'claude-code');
     assert.equal((adapter as unknown as { model?: string }).model, 'configured-model');
   });

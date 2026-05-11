@@ -1,4 +1,6 @@
+import { realpathSync, statSync } from 'node:fs';
 import { hostname, platform, userInfo } from 'node:os';
+import { isAbsolute, relative, resolve, sep } from 'node:path';
 import { ClaudeCodeAdapter } from './adapters/claude-code/index.js';
 import { CodexAdapter } from './adapters/codex/index.js';
 import { buildCodexResumeCommand } from './adapters/codex/process.js';
@@ -6,7 +8,7 @@ import { OpenCodeAdapter } from './adapters/opencode/index.js';
 import { createBuiltinAdapter } from './adapters/registry.js';
 import { resolveConfig, type SuperconnectorConfig } from './config.js';
 import { detectAdapter } from './detect.js';
-import { AdapterNotSetError, PermissionRequiredError, UnknownSessionError } from './errors.js';
+import { AdapterNotSetError, InvalidCwdError, PermissionRequiredError, UnknownSessionError } from './errors.js';
 import {
   appendApproval,
   defaultRegistryPaths,
@@ -48,8 +50,31 @@ function buildAdapter(kind: AdapterKind, config: SuperconnectorConfig): Adapter 
   return createBuiltinAdapter(kind, config.models !== undefined ? { models: config.models } : {});
 }
 
+function isSameOrDescendant(base: string, target: string): boolean {
+  const rel = relative(base, target);
+  return rel === '' || (!rel.startsWith(`..${sep}`) && rel !== '..' && !isAbsolute(rel));
+}
+
+function resolveCreateCwd(cwd: string | undefined): string {
+  const processCwd = process.cwd();
+  if (cwd === undefined) return realpathSync(processCwd);
+
+  const resolved = resolve(processCwd, cwd);
+  try {
+    if (!statSync(resolved).isDirectory()) throw new Error('cwd is not a directory');
+    const realProcessCwd = realpathSync(processCwd);
+    const realResolved = realpathSync(resolved);
+    if (!isSameOrDescendant(realProcessCwd, realResolved)) {
+      throw new Error('cwd escapes process cwd');
+    }
+    return realResolved;
+  } catch (cause) {
+    throw new InvalidCwdError(resolved, processCwd, { cause });
+  }
+}
+
 export function createSuperconnector(opts: CreateOptions = {}): Superconnector {
-  const cwd = opts.cwd ?? process.cwd();
+  const cwd = resolveCreateCwd(opts.cwd);
   const config = resolveConfig(cwd).merged;
   let adapter: Adapter | null = null;
 

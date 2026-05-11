@@ -1,6 +1,6 @@
 export class SuperconnectorError extends Error {
-  constructor(message: string) {
-    super(message);
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
     this.name = 'SuperconnectorError';
   }
 }
@@ -25,6 +25,16 @@ export class AdapterNotSetError extends SuperconnectorError {
   constructor() {
     super('No adapter set. Call setAdapter() or pass { adapter } to createSuperconnector().');
     this.name = 'AdapterNotSetError';
+  }
+}
+
+export class InvalidCwdError extends SuperconnectorError {
+  constructor(public readonly cwd: string, public readonly processCwd: string, options?: ErrorOptions) {
+    super(
+      `Invalid cwd "${cwd}". Explicit cwd must be the current process cwd or a descendant of "${processCwd}".`,
+      options,
+    );
+    this.name = 'InvalidCwdError';
   }
 }
 
