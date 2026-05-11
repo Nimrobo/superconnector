@@ -10,6 +10,7 @@ import {
   resolveConfig,
   writeConfig,
 } from '../src/config.js';
+import { ClaudeCodeAdapter } from '../src/adapters/claude-code/index.js';
 import { createSuperconnector } from '../src/index.js';
 
 function withHome<T>(fn: (home: string) => T): T {
@@ -95,4 +96,12 @@ test('createSuperconnector applies preferred adapter and configured model', () =
     assert.equal(adapter.kind, 'claude-code');
     assert.equal((adapter as unknown as { model?: string }).model, 'configured-model');
   });
+});
+
+test('ClaudeCodeAdapter lists curated model aliases', async () => {
+  const adapter = new ClaudeCodeAdapter();
+  assert.deepEqual(await adapter.listModels(tmpCwd()), [
+    { id: 'sonnet', label: 'Sonnet' },
+    { id: 'opus', label: 'Opus' },
+  ]);
 });
