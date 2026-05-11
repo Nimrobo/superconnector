@@ -26,6 +26,31 @@ export interface ResumeOptions extends PermissionOptions {
   signal?: AbortSignal;
 }
 
+export type AdapterRunAction = 'spawn' | 'resume';
+
+export type AdapterSelectionSource = 'explicit' | 'config' | 'detected' | 'recorded-session' | 'none';
+
+export type WhichAdapterWillRunOptions =
+  | (Omit<SpawnOptions, 'prompt'> & { prompt?: string; operation?: 'spawn'; sessionId?: never })
+  | (Omit<ResumeOptions, 'prompt'> & { prompt?: string; operation?: 'resume' });
+
+export interface WhichAdapterWillRunResult {
+  cwd: string;
+  action: AdapterRunAction;
+  adapter: AdapterKind | null;
+  source: AdapterSelectionSource;
+  ready: boolean;
+  reason:
+    | 'explicit_adapter'
+    | 'configured_preferred_adapter'
+    | 'detected_project_adapter'
+    | 'latest_session'
+    | 'explicit_session'
+    | 'no_adapter'
+    | 'unknown_session';
+  session: SessionRecord | null;
+}
+
 export type AgentMessageType =
   | 'assistant'
   | 'user'
@@ -71,6 +96,7 @@ export interface Superconnector {
   resume(opts: ResumeOptions): AsyncIterable<AgentMessage>;
   listSessions(filter?: { appId?: string; sessionSelector?: string }): SessionRecord[];
   detectAdapter(): AdapterKind | null;
+  whichAdapterWillRun(opts?: WhichAdapterWillRunOptions): WhichAdapterWillRunResult;
   getAdapter(): Adapter;
   setAdapter(adapter: Adapter | AdapterKind): void;
 }

@@ -12,6 +12,7 @@ import {
   UnknownSessionError,
   type AdapterKind,
   type AgentMessage,
+  type WhichAdapterWillRunResult,
 } from "@nimrobo/superconnector";
 
 export interface AgentRunEvent {
@@ -34,6 +35,30 @@ export function createAgentService(args: AgentServiceOptions) {
   return {
     listSessions() {
       return sc.listSessions({
+        appId: args.appId,
+        ...(args.sessionSelector !== undefined ? { sessionSelector: args.sessionSelector } : {}),
+      });
+    },
+
+    previewSpawn(): WhichAdapterWillRunResult {
+      return sc.whichAdapterWillRun({
+        appId: args.appId,
+        ...(args.sessionSelector !== undefined ? { sessionSelector: args.sessionSelector } : {}),
+      });
+    },
+
+    previewContinue(): WhichAdapterWillRunResult {
+      return sc.whichAdapterWillRun({
+        appId: args.appId,
+        ...(args.sessionSelector !== undefined ? { sessionSelector: args.sessionSelector } : {}),
+        resumeLastCreatedSession: true,
+      });
+    },
+
+    previewResume(sessionId: string): WhichAdapterWillRunResult {
+      return sc.whichAdapterWillRun({
+        operation: "resume",
+        sessionId,
         appId: args.appId,
         ...(args.sessionSelector !== undefined ? { sessionSelector: args.sessionSelector } : {}),
       });
@@ -106,6 +131,37 @@ Detection requires both a binary and a project marker:
 | `codex` | `codex` or `CODEX_BIN` | `AGENTS.md` or `.codex` |
 
 Choose `claude-code` when the app needs approval callbacks. OpenCode and Codex can run sessions, but they do not currently support Superconnector approval callbacks.
+
+Use `whichAdapterWillRun()` when the consumer UI needs to show or confirm the runtime before starting work. Pass the same selectors the real run will use so preview behavior matches runtime behavior:
+
+```ts
+const run = {
+  appId: "my-consumer-app",
+  sessionSelector: workspaceId,
+  resumeLastCreatedSession: true,
+};
+
+const preview = sc.whichAdapterWillRun(run);
+
+if (!preview.ready) {
+  showAdapterPicker();
+} else {
+  renderAdapterChoice(preview.adapter, preview.action, preview.source);
+}
+```
+
+For an explicit resume UI, preview with the selected session id:
+
+```ts
+const preview = sc.whichAdapterWillRun({
+  operation: "resume",
+  appId: "my-consumer-app",
+  sessionSelector: workspaceId,
+  sessionId: selected.sessionId,
+});
+```
+
+`whichAdapterWillRun()` is non-mutating: it does not start an agent, record a resume, or update session logs. `source: "recorded-session"` means the run will use the adapter stored on the matching session rather than the connector's current default adapter.
 
 ## Continue Last Session
 

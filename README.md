@@ -117,6 +117,29 @@ Config locations:
 
 Local config overrides global config. Passing an explicit `adapter` to `createSuperconnector()` overrides config and detection.
 
+## Preview the Adapter
+
+Consumer apps that need to show or confirm the runtime before starting work should call `whichAdapterWillRun()` with the same run-shaped options they will pass to `spawn()` or `resume()`. The preview does not start an agent and does not update session state.
+
+```ts
+import type { SpawnOptions } from "@nimrobo/superconnector";
+
+const run = {
+  prompt,
+  appId: "my-app",
+  sessionSelector: workspaceId,
+  resumeLastCreatedSession: true,
+} satisfies SpawnOptions;
+
+const preview = sc.whichAdapterWillRun(run);
+
+if (!preview.ready) {
+  // show adapter picker or config flow
+}
+
+console.log(preview.adapter, preview.action, preview.source);
+```
+
 ## Adapter Notes
 
 | Adapter | Detects | Notes |
