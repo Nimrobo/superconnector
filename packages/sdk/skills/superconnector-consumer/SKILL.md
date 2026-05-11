@@ -17,9 +17,10 @@ Use this skill when an app needs to call `@nimrobo/superconnector` from a truste
    - Pass an explicit adapter when the app knows the target runtime.
    - Let config/detection choose when users should control the runtime.
    - Prefer `claude-code` when the app needs Superconnector approval callbacks.
-6. Wire an `AbortSignal` from the request, job, or UI stop path.
-7. Map SDK errors into app-level errors before exposing them to the UI.
-8. Read `references/integration-patterns.md` for implementation-ready examples.
+6. Use `whichAdapterWillRun()` before starting work when the UI needs to show, confirm, or choose the runtime. Pass the same `appId`, `sessionSelector`, `resumeLastCreatedSession`, or `sessionId` that the real run will use.
+7. Wire an `AbortSignal` from the request, job, or UI stop path.
+8. Map SDK errors into app-level errors before exposing them to the UI.
+9. Read `references/integration-patterns.md` for implementation-ready examples.
 
 ## Implementation Defaults
 
@@ -30,6 +31,7 @@ Use this skill when an app needs to call `@nimrobo/superconnector` from a truste
 - Use `permissionMode: "acceptEdits"` only when the user started an edit-capable workflow.
 - Use `resumeLastCreatedSession: true` for simple "continue this app's latest run" flows. Include `sessionSelector` when continuing within a specific thread or workspace scope.
 - Use explicit `sessionId` plus `listSessions({ appId })` for multi-session UIs.
+- Expose `whichAdapterWillRun()` through the app service when users need to see the adapter before a run. Treat `ready: false` as a prompt to show adapter picker/config UI instead of calling `spawn()` or `resume()`.
 - Treat `AgentMessage.content` as adapter-shaped data. Normalize it at the app boundary before storing or rendering.
 
 ## Adapter Guidance
@@ -56,4 +58,4 @@ Adapter detection requires both the agent binary and a project marker in or abov
 
 - Prefer a stub `Adapter` for consumer-app unit tests.
 - Use temporary `SUPERCONNECTOR_HOME` paths for session tests. If a test needs a temporary `cwd`, first `chdir` into the allowed base or pass a child path under the current process directory.
-- Cover spawn, explicit resume, `resumeLastCreatedSession`, selector scoping, cancellation, approval allow/deny when using Claude Code, and app-level error mapping.
+- Cover `whichAdapterWillRun()` previews, spawn, explicit resume, `resumeLastCreatedSession`, selector scoping, cancellation, approval allow/deny when using Claude Code, and app-level error mapping.
