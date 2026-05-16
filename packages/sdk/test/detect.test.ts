@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { chmodSync, mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from 'node:fs';
+import { homedir, tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ClaudeCodeAdapter } from '../src/adapters/claude-code/index.js';
@@ -47,6 +47,20 @@ test('ClaudeCodeAdapter detect requires binary and claude marker', () => {
   assert.equal(new ClaudeCodeAdapter({ binPath: FAKE_CLAUDE }).detect(tmp()), false);
 });
 
+test('ClaudeCodeAdapter detect accepts each marker variant and rejects wrong .claude type', () => {
+  const dotClaude = tmp();
+  mkdirSync(join(dotClaude, '.claude'));
+  const claudeMd = tmp();
+  writeFileSync(join(claudeMd, 'CLAUDE.md'), '# claude');
+  const fileMarker = tmp();
+  writeFileSync(join(fileMarker, '.claude'), 'not a directory');
+
+  const adapter = new ClaudeCodeAdapter({ binPath: FAKE_CLAUDE });
+  assert.equal(adapter.detect(dotClaude), true);
+  assert.equal(adapter.detect(claudeMd), true);
+  assert.equal(adapter.detect(fileMarker), false);
+});
+
 test('OpenCodeAdapter detect requires binary and opencode marker', () => {
   const dir = tmp();
   writeFileSync(join(dir, 'opencode.json'), '{}');
@@ -56,6 +70,20 @@ test('OpenCodeAdapter detect requires binary and opencode marker', () => {
   assert.equal(new OpenCodeAdapter({ binPath: FAKE_OPENCODE }).detect(tmp()), false);
 });
 
+test('OpenCodeAdapter detect accepts each marker variant and rejects wrong .opencode type', () => {
+  const dotOpenCode = tmp();
+  mkdirSync(join(dotOpenCode, '.opencode'));
+  const jsonMarker = tmp();
+  writeFileSync(join(jsonMarker, 'opencode.json'), '{}');
+  const fileMarker = tmp();
+  writeFileSync(join(fileMarker, '.opencode'), 'not a directory');
+
+  const adapter = new OpenCodeAdapter({ binPath: FAKE_OPENCODE });
+  assert.equal(adapter.detect(dotOpenCode), true);
+  assert.equal(adapter.detect(jsonMarker), true);
+  assert.equal(adapter.detect(fileMarker), false);
+});
+
 test('CodexAdapter detect requires binary and codex marker', () => {
   const dir = tmp();
   mkdirSync(join(dir, '.codex'));
@@ -63,6 +91,52 @@ test('CodexAdapter detect requires binary and codex marker', () => {
   assert.equal(new CodexAdapter({ binPath: FAKE_CODEX }).detect(dir), true);
   assert.equal(new CodexAdapter({ binPath: '/nonexistent/sc-codex' }).detect(dir), false);
   assert.equal(new CodexAdapter({ binPath: FAKE_CODEX }).detect(tmp()), false);
+});
+
+test('CodexAdapter detect accepts each marker variant and rejects wrong .codex type', () => {
+  const dotCodex = tmp();
+  mkdirSync(join(dotCodex, '.codex'));
+  const agentsMd = tmp();
+  writeFileSync(join(agentsMd, 'AGENTS.md'), '# agents');
+  const fileMarker = tmp();
+  writeFileSync(join(fileMarker, '.codex'), 'not a directory');
+
+  const adapter = new CodexAdapter({ binPath: FAKE_CODEX });
+  assert.equal(adapter.detect(dotCodex), true);
+  assert.equal(adapter.detect(agentsMd), true);
+  assert.equal(adapter.detect(fileMarker), false);
+});
+
+test('detectAdapter can discover a binary from PATH without explicit env bin', () => {
+  const binDir = mkdtempSync(join(tmpdir(), 'sc-detect-path-bin-'));
+  const fakeCodexOnPath = join(binDir, 'codex');
+  writeFileSync(fakeCodexOnPath, '#!/usr/bin/env node\nprocess.exit(0)\n', 'utf8');
+  chmodSync(fakeCodexOnPath, 0o755);
+
+  const prev = {
+    PATH: process.env.PATH,
+    CLAUDE_BIN: process.env.CLAUDE_BIN,
+    OPENCODE_BIN: process.env.OPENCODE_BIN,
+    CODEX_BIN: process.env.CODEX_BIN,
+  };
+  process.env.PATH = `${binDir}${process.env.PATH ? `:${process.env.PATH}` : ''}`;
+  process.env.CLAUDE_BIN = '/no/claude';
+  process.env.OPENCODE_BIN = '/no/opencode';
+  delete process.env.CODEX_BIN;
+  try {
+    const dir = tmp();
+    mkdirSync(join(dir, '.codex'));
+    assert.equal(detectAdapter(dir), 'codex');
+  } finally {
+    if (prev.PATH === undefined) delete process.env.PATH;
+    else process.env.PATH = prev.PATH;
+    if (prev.CLAUDE_BIN === undefined) delete process.env.CLAUDE_BIN;
+    else process.env.CLAUDE_BIN = prev.CLAUDE_BIN;
+    if (prev.OPENCODE_BIN === undefined) delete process.env.OPENCODE_BIN;
+    else process.env.OPENCODE_BIN = prev.OPENCODE_BIN;
+    if (prev.CODEX_BIN === undefined) delete process.env.CODEX_BIN;
+    else process.env.CODEX_BIN = prev.CODEX_BIN;
+  }
 });
 
 test('detectAdapter detects claude-code via CLAUDE.md with env binary', () => {
@@ -115,6 +189,52 @@ test('detectAdapter walks upward', () => {
     mkdirSync(child, { recursive: true });
     writeFileSync(join(parent, 'AGENTS.md'), '# agents');
     assert.equal(detectAdapter(child), 'codex');
+  });
+});
+
+test('detectAdapter prefers the nearest ancestor before adapter priority at higher ancestors', () => {
+  withBins({ CLAUDE_BIN: FAKE_CLAUDE, OPENCODE_BIN: '/no/opencode', CODEX_BIN: FAKE_CODEX }, () => {
+    const parent = tmp();
+    const child = join(parent, 'a', 'b');
+    mkdirSync(child, { recursive: true });
+    writeFileSync(join(parent, 'CLAUDE.md'), '# claude');
+    mkdirSync(join(dirname(child), '.codex'));
+
+    assert.equal(detectAdapter(child), 'codex');
+  });
+});
+
+test('detectAdapter handles symlinked cwd paths and spaces', () => {
+  withBins({ CLAUDE_BIN: '/no/claude', OPENCODE_BIN: FAKE_OPENCODE, CODEX_BIN: '/no/codex' }, () => {
+    const targetParent = mkdtempSync(join(tmpdir(), 'sc detect target '));
+    const target = join(targetParent, 'project with spaces');
+    mkdirSync(target, { recursive: true });
+    writeFileSync(join(target, 'opencode.json'), '{}');
+
+    const linkParent = mkdtempSync(join(tmpdir(), 'sc detect link '));
+    const link = join(linkParent, 'linked project');
+    symlinkSync(target, link, 'dir');
+
+    assert.equal(detectAdapter(link), 'opencode');
+  });
+});
+
+test('detectAdapter does not walk above the home directory boundary', () => {
+  withBins({ CLAUDE_BIN: '/no/claude', OPENCODE_BIN: '/no/opencode', CODEX_BIN: FAKE_CODEX }, () => {
+    const prevHome = process.env.HOME;
+    const fakeRoot = mkdtempSync(join(tmpdir(), 'sc-home-root-'));
+    const fakeHome = join(fakeRoot, 'home');
+    const project = join(fakeHome, 'project');
+    mkdirSync(project, { recursive: true });
+    mkdirSync(join(fakeRoot, '.codex'));
+    process.env.HOME = fakeHome;
+    try {
+      assert.equal(homedir(), fakeHome);
+      assert.equal(detectAdapter(project), null);
+    } finally {
+      if (prevHome === undefined) delete process.env.HOME;
+      else process.env.HOME = prevHome;
+    }
   });
 });
 

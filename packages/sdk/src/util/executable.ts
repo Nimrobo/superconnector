@@ -16,25 +16,34 @@ function canExecute(path: string): boolean {
   }
 }
 
-function candidateNames(command: string): string[] {
-  if (process.platform !== 'win32' || /\.[^\\/]+$/.test(command)) return [command];
-  const exts = (process.env['PATHEXT'] ?? '.EXE;.CMD;.BAT;.COM')
+function candidateNames(command: string, platform: NodeJS.Platform, env: NodeJS.ProcessEnv): string[] {
+  if (platform !== 'win32' || /\.[^\\/]+$/.test(command)) return [command];
+  const exts = (env['PATHEXT'] ?? '.EXE;.CMD;.BAT;.COM')
     .split(';')
     .map((e) => e.trim())
     .filter(Boolean);
   return [command, ...exts.map((ext) => `${command}${ext}`)];
 }
 
-export function isExecutableAvailable(command: string): boolean {
+export function isExecutableAvailableForPlatform(
+  command: string,
+  platform: NodeJS.Platform,
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
   if (!command) return false;
   if (isPathLike(command)) return canExecute(command);
 
-  const path = process.env['PATH'] ?? '';
-  for (const dir of path.split(delimiter)) {
+  const path = env['PATH'] ?? '';
+  const pathDelimiter = platform === 'win32' ? ';' : delimiter;
+  for (const dir of path.split(pathDelimiter)) {
     if (!dir) continue;
-    for (const name of candidateNames(command)) {
+    for (const name of candidateNames(command, platform, env)) {
       if (canExecute(join(dir, name))) return true;
     }
   }
   return false;
+}
+
+export function isExecutableAvailable(command: string): boolean {
+  return isExecutableAvailableForPlatform(command, process.platform, process.env);
 }

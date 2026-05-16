@@ -8,6 +8,9 @@
  *                               sessionID = FAKE_SESSION_ID (default ses_fake-1)
  *                               If RUN_SCENARIO=fail → emit nothing on stdout,
  *                               write to stderr, exit 1.
+ *                               If RUN_SCENARIO=malformed-stream → emit bad,
+ *                               unknown, partial, and large stream output.
+ *                               If RUN_SCENARIO=slow → keep process alive.
  *
  * Writes the literal argv received to FAKE_ARGS_FILE if set (newline-joined),
  * so tests can assert on flag composition.
@@ -22,6 +25,10 @@ if (argsFile) {
 
 const sub = argv[0];
 
+function writeOut(s) {
+  return new Promise((resolve) => process.stdout.write(s, resolve));
+}
+
 if (sub === 'models') {
   const out = process.env.FAKE_MODELS_OUTPUT;
   if (out !== undefined) {
@@ -33,16 +40,27 @@ if (sub === 'models') {
 }
 
 if (sub === 'run') {
-  if (process.env.RUN_SCENARIO === 'fail') {
-    process.stderr.write('opencode: simulated failure\n');
-    process.exit(1);
-  }
   const sid = process.env.FAKE_SESSION_ID || 'ses_fake-1';
   const emit = (obj) => process.stdout.write(JSON.stringify(obj) + '\n');
-  emit({ type: 'step_start', sessionID: sid, part: { type: 'step-start' } });
-  emit({ type: 'text', sessionID: sid, part: { type: 'text', text: 'hi from fake' } });
-  emit({ type: 'step_finish', sessionID: sid, part: { type: 'step-finish', reason: 'stop' } });
-  process.exit(0);
+  if (process.env.RUN_SCENARIO === 'slow') {
+    setInterval(() => {}, 1000); // keep alive until killed
+  } else if (process.env.RUN_SCENARIO === 'fail') {
+    process.stderr.write(`${'stderr '.repeat(600)}opencode: simulated failure tail\n`);
+    process.exit(1);
+  } else if (process.env.RUN_SCENARIO === 'malformed-stream') {
+    await writeOut('not-json\n');
+    await writeOut(`${JSON.stringify({ type: 'future_event', sessionID: sid, part: { ignored: true } })}\n`);
+    await writeOut('{"type":"text","sessionID":"');
+    await writeOut(`${sid}","part":{"type":"text","text":"partial"}}\n`);
+    await writeOut(`${JSON.stringify({ type: 'text', sessionID: sid, part: { type: 'text', text: 'x'.repeat(8192) } })}\n`);
+    await writeOut(`${JSON.stringify({ type: 'step_finish', sessionID: sid, part: { type: 'step-finish', reason: 'stop' } })}\n`);
+    process.exit(0);
+  } else {
+    emit({ type: 'step_start', sessionID: sid, part: { type: 'step-start' } });
+    emit({ type: 'text', sessionID: sid, part: { type: 'text', text: 'hi from fake' } });
+    emit({ type: 'step_finish', sessionID: sid, part: { type: 'step-finish', reason: 'stop' } });
+    process.exit(0);
+  }
 }
 
 process.exit(0);

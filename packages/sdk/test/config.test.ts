@@ -12,6 +12,8 @@ import {
 } from '../src/config.js';
 import { ClaudeCodeAdapter } from '../src/adapters/claude-code/index.js';
 import { createSuperconnector } from '../src/index.js';
+import { createBuiltinAdapter } from '../src/adapters/registry.js';
+import type { AdapterKind } from '../src/types.js';
 import { withProcessCwd } from './test-util.js';
 
 function withHome<T>(fn: (home: string) => T): T {
@@ -97,6 +99,20 @@ test('createSuperconnector applies preferred adapter and configured model', () =
     assert.equal(adapter.kind, 'claude-code');
     assert.equal((adapter as unknown as { model?: string }).model, 'configured-model');
   });
+});
+
+test('configured model selection flows into every built-in adapter', () => {
+  const models: Record<AdapterKind, string> = {
+    'claude-code': 'configured-claude',
+    opencode: 'configured-opencode',
+    codex: 'configured-codex',
+  };
+
+  for (const kind of Object.keys(models) as AdapterKind[]) {
+    const adapter = createBuiltinAdapter(kind, { models });
+    assert.equal(adapter.kind, kind);
+    assert.equal((adapter as unknown as { model?: string }).model, models[kind]);
+  }
 });
 
 test('ClaudeCodeAdapter lists curated model aliases', async () => {
