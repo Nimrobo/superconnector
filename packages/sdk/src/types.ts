@@ -83,6 +83,12 @@ export interface AdapterModel {
   description?: string;
 }
 
+export interface AdapterInfo {
+  kind: AdapterKind;
+  detected: boolean;
+  selected: boolean;
+}
+
 export interface Adapter {
   kind: AdapterKind;
   detect(cwd: string): boolean;
@@ -99,6 +105,8 @@ export interface Superconnector {
   whichAdapterWillRun(opts?: WhichAdapterWillRunOptions): WhichAdapterWillRunResult;
   getAdapter(): Adapter;
   setAdapter(adapter: Adapter | AdapterKind): void;
+  listAdapters(): AdapterInfo[];
+  listModels(adapter: AdapterKind): Promise<AdapterModel[]>;
 }
 
 export type { ApprovalRequest, ApprovalDecision, ApprovalCallback } from './approval/types.js';

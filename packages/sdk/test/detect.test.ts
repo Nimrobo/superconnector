@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { ClaudeCodeAdapter } from '../src/adapters/claude-code/index.js';
 import { CodexAdapter } from '../src/adapters/codex/index.js';
 import { OpenCodeAdapter } from '../src/adapters/opencode/index.js';
-import { detectAdapter } from '../src/detect.js';
+import { detectAdapter, detectAdapters } from '../src/detect.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const FAKE_CLAUDE = join(here, 'fake-claude.mjs');
@@ -241,5 +241,42 @@ test('detectAdapter does not walk above the home directory boundary', () => {
 test('detectAdapter returns null when no usable markers match', () => {
   withBins({ CLAUDE_BIN: FAKE_CLAUDE, OPENCODE_BIN: FAKE_OPENCODE, CODEX_BIN: FAKE_CODEX }, () => {
     assert.equal(detectAdapter(tmp()), null);
+  });
+});
+
+test('detectAdapters returns every detected adapter in priority order', () => {
+  withBins({ CLAUDE_BIN: FAKE_CLAUDE, OPENCODE_BIN: FAKE_OPENCODE, CODEX_BIN: FAKE_CODEX }, () => {
+    const dir = tmp();
+    mkdirSync(join(dir, '.codex'));
+    writeFileSync(join(dir, 'opencode.json'), '{}');
+    mkdirSync(join(dir, '.claude'));
+    assert.deepEqual(detectAdapters(dir), ['claude-code', 'opencode', 'codex']);
+  });
+});
+
+test('detectAdapters omits adapters whose binary is unavailable', () => {
+  withBins({ CLAUDE_BIN: '/no/claude', OPENCODE_BIN: FAKE_OPENCODE, CODEX_BIN: FAKE_CODEX }, () => {
+    const dir = tmp();
+    mkdirSync(join(dir, '.claude'));
+    writeFileSync(join(dir, 'opencode.json'), '{}');
+    mkdirSync(join(dir, '.codex'));
+    assert.deepEqual(detectAdapters(dir), ['opencode', 'codex']);
+  });
+});
+
+test('detectAdapters de-duplicates a kind detected at multiple ancestors', () => {
+  withBins({ CLAUDE_BIN: '/no/claude', OPENCODE_BIN: '/no/opencode', CODEX_BIN: FAKE_CODEX }, () => {
+    const parent = tmp();
+    const child = join(parent, 'a', 'b');
+    mkdirSync(child, { recursive: true });
+    mkdirSync(join(parent, '.codex'));
+    writeFileSync(join(child, 'AGENTS.md'), '# agents');
+    assert.deepEqual(detectAdapters(child), ['codex']);
+  });
+});
+
+test('detectAdapters returns an empty array when nothing matches', () => {
+  withBins({ CLAUDE_BIN: FAKE_CLAUDE, OPENCODE_BIN: FAKE_OPENCODE, CODEX_BIN: FAKE_CODEX }, () => {
+    assert.deepEqual(detectAdapters(tmp()), []);
   });
 });

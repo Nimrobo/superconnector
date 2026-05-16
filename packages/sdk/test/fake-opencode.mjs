@@ -43,7 +43,11 @@ if (sub === 'run') {
   const sid = process.env.FAKE_SESSION_ID || 'ses_fake-1';
   const emit = (obj) => process.stdout.write(JSON.stringify(obj) + '\n');
   if (process.env.RUN_SCENARIO === 'slow') {
-    setInterval(() => {}, 1000); // keep alive until killed
+    // Stay alive (emitting nothing) until the parent kills us. Note the
+    // explicit early `process.exit` in every other branch: without it,
+    // execution would fall through to the unconditional exit below and
+    // this "slow" process would terminate immediately.
+    setInterval(() => {}, 1000);
   } else if (process.env.RUN_SCENARIO === 'fail') {
     process.stderr.write(`${'stderr '.repeat(600)}opencode: simulated failure tail\n`);
     process.exit(1);
@@ -61,6 +65,7 @@ if (sub === 'run') {
     emit({ type: 'step_finish', sessionID: sid, part: { type: 'step-finish', reason: 'stop' } });
     process.exit(0);
   }
+  // RUN_SCENARIO=slow falls through here intentionally and keeps running.
+} else {
+  process.exit(0);
 }
-
-process.exit(0);
