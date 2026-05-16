@@ -140,6 +140,19 @@ if (!preview.ready) {
 console.log(preview.adapter, preview.action, preview.source);
 ```
 
+To build the adapter or model picker itself, enumerate the choices with `listAdapters()` and `listModels()`. Unlike `whichAdapterWillRun()`, which previews the single next run, these list every available option and never start an agent.
+
+```ts
+// One entry per built-in adapter, with detection and selection flags.
+for (const a of sc.listAdapters()) {
+  console.log(a.kind, a.detected, a.selected);
+}
+
+// Models for a given adapter kind, independent of the selected adapter.
+const models = await sc.listModels("claude-code");
+console.log(models.map((m) => m.id));
+```
+
 ## Adapter Notes
 
 | Adapter | Detects | Notes |

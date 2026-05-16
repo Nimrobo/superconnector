@@ -18,9 +18,10 @@ Use this skill when an app needs to call `@nimrobo/superconnector` from a truste
    - Let config/detection choose when users should control the runtime.
    - Prefer `claude-code` when the app needs Superconnector approval callbacks.
 6. Use `whichAdapterWillRun()` before starting work when the UI needs to show, confirm, or choose the runtime. Pass the same `appId`, `sessionSelector`, `resumeLastCreatedSession`, or `sessionId` that the real run will use.
-7. Wire an `AbortSignal` from the request, job, or UI stop path.
-8. Map SDK errors into app-level errors before exposing them to the UI.
-9. Read `references/integration-patterns.md` for implementation-ready examples.
+7. Use `listAdapters()` and `listModels(kind)` when the UI needs an adapter or model picker. `whichAdapterWillRun()` previews the single next run; the picker methods enumerate the available choices.
+8. Wire an `AbortSignal` from the request, job, or UI stop path.
+9. Map SDK errors into app-level errors before exposing them to the UI.
+10. Read `references/integration-patterns.md` for implementation-ready examples.
 
 ## Implementation Defaults
 
@@ -32,6 +33,7 @@ Use this skill when an app needs to call `@nimrobo/superconnector` from a truste
 - Use `resumeLastCreatedSession: true` for simple "continue this app's latest run" flows. Include `sessionSelector` when continuing within a specific thread or workspace scope.
 - Use explicit `sessionId` plus `listSessions({ appId })` for multi-session UIs.
 - Expose `whichAdapterWillRun()` through the app service when users need to see the adapter before a run. Treat `ready: false` as a prompt to show adapter picker/config UI instead of calling `spawn()` or `resume()`.
+- Populate adapter/model picker UI with `listAdapters()` and `listModels(kind)`. `listAdapters()` returns one entry per built-in kind with `detected` and `selected` flags. `listModels(kind)` takes the adapter kind explicitly, so it never depends on the selected adapter and never throws `AdapterNotSetError`. Both are non-mutating.
 - Treat `AgentMessage.content` as adapter-shaped data. Normalize it at the app boundary before storing or rendering.
 
 ## Adapter Guidance
@@ -45,6 +47,8 @@ Adapter detection requires both the agent binary and a project marker in or abov
 - Claude Code: `claude` plus `CLAUDE.md` or `.claude`
 - OpenCode: `opencode` plus `opencode.json` or `.opencode`
 - Codex: `codex` plus `AGENTS.md` or `.codex`
+
+`detectAdapter(cwd)` returns the first detected kind (or `null`). `detectAdapters(cwd)` returns every detected kind in priority order — use it when the app needs the full set rather than a single auto-selected adapter.
 
 ## Config And State
 
