@@ -33,8 +33,19 @@ export async function* runOpenCode(args: RunArgs): AsyncIterable<AgentMessage> {
     raw: { source: 'superconnector' },
   });
 
+  let killTimer: NodeJS.Timeout | undefined;
   const onAbort = () => {
     if (!child.killed) child.kill('SIGTERM');
+    // Escalate to SIGKILL if the child ignores SIGTERM, so an aborted run
+    // can never leave a process lingering. unref() keeps this timer from
+    // holding the event loop open on its own.
+    killTimer = setTimeout(() => {
+      if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
+    }, 2000);
+    killTimer.unref();
+    // Stop the consumer promptly rather than waiting for the child's
+    // 'close' event — a wedged child must not stall iteration.
+    stream.close();
   };
   if (args.signal) {
     if (args.signal.aborted) onAbort();
@@ -98,6 +109,7 @@ export async function* runOpenCode(args: RunArgs): AsyncIterable<AgentMessage> {
     }
   } finally {
     if (args.signal) args.signal.removeEventListener('abort', onAbort);
+    if (killTimer) clearTimeout(killTimer);
     if (args.onClose) {
       try {
         await args.onClose();

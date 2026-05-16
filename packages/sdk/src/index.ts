@@ -2,9 +2,9 @@ import { realpathSync, statSync } from 'node:fs';
 import { hostname, platform, userInfo } from 'node:os';
 import { isAbsolute, relative, resolve, sep } from 'node:path';
 import { buildCodexResumeCommand } from './adapters/codex/process.js';
-import { createBuiltinAdapter } from './adapters/registry.js';
+import { ADAPTER_KINDS, createBuiltinAdapter } from './adapters/registry.js';
 import { resolveConfig, type SuperconnectorConfig } from './config.js';
-import { detectAdapter } from './detect.js';
+import { detectAdapter, detectAdapters } from './detect.js';
 import {
   AdapterNotSetError,
   InvalidCwdError,
@@ -26,7 +26,9 @@ import {
 } from './registry.js';
 import type {
   Adapter,
+  AdapterInfo,
   AdapterKind,
+  AdapterModel,
   AdapterSelectionSource,
   AgentMessage,
   PermissionMode,
@@ -40,7 +42,7 @@ import type {
 
 export * from './types.js';
 export * from './errors.js';
-export { detectAdapter } from './detect.js';
+export { detectAdapter, detectAdapters } from './detect.js';
 export { ClaudeCodeAdapter } from './adapters/claude-code/index.js';
 export { OpenCodeAdapter } from './adapters/opencode/index.js';
 export { CodexAdapter } from './adapters/codex/index.js';
@@ -215,6 +217,18 @@ export function createSuperconnector(opts: CreateOptions = {}): Superconnector {
     setAdapter(next: Adapter | AdapterKind): void {
       adapter = rememberAdapter(typeof next === 'string' ? buildAdapter(next, config) : next);
       adapterSource = 'explicit';
+    },
+    listAdapters(): AdapterInfo[] {
+      const detected = new Set(detectAdapters(cwd));
+      return ADAPTER_KINDS.map((kind) => ({
+        kind,
+        detected: detected.has(kind),
+        selected: adapter?.kind === kind,
+      }));
+    },
+    listModels(kind: AdapterKind): Promise<AdapterModel[]> {
+      const a = adaptersByKind.get(kind) ?? buildAdapter(kind, config);
+      return Promise.resolve(a.listModels?.(cwd) ?? []);
     },
     listSessions(filter?: { appId?: string; sessionSelector?: string }): SessionRecord[] {
       return listSessionsImpl({

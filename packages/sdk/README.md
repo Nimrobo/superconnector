@@ -172,6 +172,27 @@ if (!preview.ready) {
 console.log(preview.adapter, preview.action, preview.source);
 ```
 
+### List adapters and models
+
+To build an adapter or model picker, query availability without starting an agent:
+
+```ts
+// One entry per built-in adapter, with detection and selection flags.
+for (const a of sc.listAdapters()) {
+  console.log(a.kind, a.detected, a.selected);
+}
+
+// Models for a given adapter kind (independent of the currently selected adapter).
+const models = await sc.listModels("claude-code");
+console.log(models.map((m) => m.id));
+```
+
+`listAdapters()` returns `AdapterInfo[]` — `detected` means the adapter's project
+markers and binary were found for the current `cwd` (or an ancestor), and `selected`
+marks the adapter this `Superconnector` will use. `listModels(kind)` returns
+`AdapterModel[]` and takes the adapter kind explicitly, so it never throws
+`AdapterNotSetError`.
+
 ## Sessions
 
 Superconnector records sessions by `cwd` and `appId`. Use a stable `appId` for your app or feature:

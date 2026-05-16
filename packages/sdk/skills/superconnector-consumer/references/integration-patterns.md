@@ -10,7 +10,9 @@ import {
   AdapterNotSetError,
   PermissionRequiredError,
   UnknownSessionError,
+  type AdapterInfo,
   type AdapterKind,
+  type AdapterModel,
   type AgentMessage,
   type WhichAdapterWillRunResult,
 } from '@nimrobo/superconnector';
@@ -166,6 +168,27 @@ const preview = sc.whichAdapterWillRun({
 ```
 
 `whichAdapterWillRun()` is non-mutating: it does not start an agent, record a resume, or update session logs. `source: "recorded-session"` means the run will use the adapter stored on the matching session rather than the connector's current default adapter.
+
+## Adapter And Model Pickers
+
+Use `whichAdapterWillRun()` to preview the single next run. Use `listAdapters()` and `listModels()` instead when the UI needs to enumerate choices for an adapter or model picker. Both are non-mutating and do not start an agent.
+
+`listAdapters()` returns one `AdapterInfo` per built-in adapter kind. `detected` means the adapter's project markers and binary were found for the connector's `cwd` (or an ancestor); `selected` marks the adapter this connector will use.
+
+```ts
+// Adapter picker: one row per built-in adapter.
+const adapters: AdapterInfo[] = sc.listAdapters();
+// [{ kind: "claude-code", detected: true, selected: true }, ...]
+renderAdapterPicker(adapters.filter((a) => a.detected));
+```
+
+`listModels(kind)` returns `AdapterModel[]` for the given adapter kind. It takes the kind explicitly, so it never depends on the currently selected adapter and never throws `AdapterNotSetError`.
+
+```ts
+// Model picker for the chosen adapter kind.
+const models: AdapterModel[] = await sc.listModels(chosenKind);
+renderModelPicker(models);
+```
 
 ## Continue Last Session
 
