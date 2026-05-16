@@ -68,8 +68,36 @@ test('runCodex throws AdapterFailedError on nonzero exit', async () => {
       (err) =>
         err instanceof AdapterFailedError &&
         err.exitCode === 1 &&
-        /codex failed/.test(err.stderr),
+        /codex failed/.test(err.stderr) &&
+        err.stderr.endsWith('tail\n'),
     );
+  });
+});
+
+test('runCodex ignores malformed lines and handles unknown, partial, and large event chunks', async () => {
+  await withScenario('malformed-stream', async () => {
+    const msgs = await drain(runCodex({ binPath: FAKE_CODEX, args: ['exec', '--json', 'go'], cwd: tmpCwd() }));
+    assert.deepEqual(
+      msgs.map((m) => m.type),
+      ['superconnector', 'system', 'system', 'assistant', 'assistant', 'result'],
+    );
+    assert.deepEqual(msgs[3]!.content, { content: 'partial' });
+    assert.equal(String(msgs[4]!.content).length, 8192);
+  });
+});
+
+test('runCodex stops cleanly when aborted', async () => {
+  await withScenario('slow', async () => {
+    const ctrl = new AbortController();
+    setTimeout(() => ctrl.abort(), 50);
+    const msgs = await drain(runCodex({
+      binPath: FAKE_CODEX,
+      args: ['exec', '--json', 'go'],
+      cwd: tmpCwd(),
+      signal: ctrl.signal,
+    }));
+    assert.ok(ctrl.signal.aborted);
+    assert.equal(msgs[0]!.type, 'superconnector');
   });
 });
 

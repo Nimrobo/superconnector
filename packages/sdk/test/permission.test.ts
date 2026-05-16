@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, existsSync, realpathSync } from 'node:fs';
+import { mkdtempSync, readFileSync, existsSync, realpathSync, unlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -21,6 +21,21 @@ function isolatedHome(): string {
   const home = mkdtempSync(join(tmpdir(), 'sc-home-'));
   process.env.SUPERCONNECTOR_HOME = home;
   return home;
+}
+
+function withArgsFile<T>(fn: (path: string) => Promise<T>): Promise<T> {
+  const path = join(mkdtempSync(join(tmpdir(), 'claude-args-')), 'args');
+  const prev = process.env.FAKE_ARGS_FILE;
+  process.env.FAKE_ARGS_FILE = path;
+  return fn(path).finally(() => {
+    if (prev === undefined) delete process.env.FAKE_ARGS_FILE;
+    else process.env.FAKE_ARGS_FILE = prev;
+    if (existsSync(path)) unlinkSync(path);
+  });
+}
+
+function readArgs(path: string): string[] {
+  return readFileSync(path, 'utf8').split('\n');
 }
 
 class MetaStubAdapter implements Adapter {
@@ -182,6 +197,55 @@ test('runClaude ok scenario yields normal stream and exits cleanly', async () =>
     assert.ok(types.includes('system'));
     assert.ok(types.includes('assistant'));
     assert.ok(types.includes('result'));
+  } finally {
+    if (prev === undefined) delete process.env.SCENARIO;
+    else process.env.SCENARIO = prev;
+  }
+});
+
+test('runClaude ignores malformed/unknown lines and handles partial large stream chunks', async () => {
+  const cwd = mkdtempSync(join(tmpdir(), 'sc-cwd-'));
+  const prev = process.env.SCENARIO;
+  process.env.SCENARIO = 'malformed-stream';
+  try {
+    const msgs: AgentMessage[] = [];
+    for await (const m of runClaude({
+      binPath: FAKE_CLAUDE,
+      args: [],
+      cwd,
+    })) {
+      msgs.push(m);
+    }
+    assert.deepEqual(
+      msgs.map((m) => m.type),
+      ['superconnector', 'system', 'assistant', 'assistant', 'result'],
+    );
+    assert.equal((msgs[2]!.content as { content?: string }).content, 'partial');
+    assert.equal((msgs[3]!.content as { content?: string }).content?.length, 8192);
+  } finally {
+    if (prev === undefined) delete process.env.SCENARIO;
+    else process.env.SCENARIO = prev;
+  }
+});
+
+test('runClaude stops cleanly when aborted', async () => {
+  const cwd = mkdtempSync(join(tmpdir(), 'sc-cwd-'));
+  const prev = process.env.SCENARIO;
+  process.env.SCENARIO = 'slow';
+  const ctrl = new AbortController();
+  setTimeout(() => ctrl.abort(), 50);
+  try {
+    const msgs: AgentMessage[] = [];
+    for await (const m of runClaude({
+      binPath: FAKE_CLAUDE,
+      args: [],
+      cwd,
+      signal: ctrl.signal,
+    })) {
+      msgs.push(m);
+    }
+    assert.ok(ctrl.signal.aborted);
+    assert.ok(msgs.some((m) => m.type === 'superconnector'));
   } finally {
     if (prev === undefined) delete process.env.SCENARIO;
     else process.env.SCENARIO = prev;
@@ -375,6 +439,75 @@ test('ClaudeCodeAdapter with permissionMode "read" passes plan flag', async () =
     if (prev === undefined) delete process.env.SCENARIO;
     else process.env.SCENARIO = prev;
     delete process.env.FAKE_SESSION_ID;
+  }
+});
+
+test('ClaudeCodeAdapter appends configured model and does not duplicate explicit model args', async () => {
+  isolatedHome();
+  const cwd = mkdtempSync(join(tmpdir(), 'sc-cwd-'));
+  const prevScenario = process.env.SCENARIO;
+  process.env.SCENARIO = 'ok';
+  try {
+    await withArgsFile(async (argsPath) => {
+      const adapter = new ClaudeCodeAdapter({
+        binPath: FAKE_CLAUDE,
+        model: 'sonnet-test',
+      });
+      for await (const _ of adapter.spawn({ prompt: 'm', appId: 'app' }, cwd)) {
+        /* drain */
+      }
+      const args = readArgs(argsPath);
+      const modelIdx = args.indexOf('--model');
+      assert.ok(modelIdx >= 0);
+      assert.equal(args[modelIdx + 1], 'sonnet-test');
+    });
+
+    await withArgsFile(async (argsPath) => {
+      const adapter = new ClaudeCodeAdapter({
+        binPath: FAKE_CLAUDE,
+        model: 'sonnet-test',
+        extraArgs: ['--model', 'opus-test'],
+      });
+      for await (const _ of adapter.spawn({ prompt: 'm', appId: 'app' }, cwd)) {
+        /* drain */
+      }
+      const args = readArgs(argsPath);
+      assert.equal(args.filter((a) => a === '--model').length, 1);
+      assert.ok(args.includes('opus-test'));
+      assert.ok(!args.includes('sonnet-test'));
+    });
+  } finally {
+    if (prevScenario === undefined) delete process.env.SCENARIO;
+    else process.env.SCENARIO = prevScenario;
+  }
+});
+
+test('ClaudeCodeAdapter resume includes --resume session id and prompt', async () => {
+  isolatedHome();
+  const cwd = mkdtempSync(join(tmpdir(), 'sc-cwd-'));
+  const prevScenario = process.env.SCENARIO;
+  process.env.SCENARIO = 'ok';
+  try {
+    await withArgsFile(async (argsPath) => {
+      const adapter = new ClaudeCodeAdapter({ binPath: FAKE_CLAUDE });
+      for await (const _ of adapter.resume({
+        prompt: 'continue',
+        appId: 'app',
+        sessionId: 'claude-sess-1',
+      }, cwd)) {
+        /* drain */
+      }
+      const args = readArgs(argsPath);
+      const promptIdx = args.indexOf('-p');
+      const resumeIdx = args.indexOf('--resume');
+      assert.ok(promptIdx >= 0);
+      assert.equal(args[promptIdx + 1], 'continue');
+      assert.ok(resumeIdx >= 0);
+      assert.equal(args[resumeIdx + 1], 'claude-sess-1');
+    });
+  } finally {
+    if (prevScenario === undefined) delete process.env.SCENARIO;
+    else process.env.SCENARIO = prevScenario;
   }
 });
 

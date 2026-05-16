@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, realpathSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -11,7 +11,9 @@ import type { Adapter, AdapterKind, AgentMessage, ResumeOptions, SpawnOptions } 
 import { withProcessCwd } from './test-util.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
+const FAKE_CLAUDE = join(here, 'fake-claude.mjs');
 const FAKE_CODEX = join(here, 'fake-codex.mjs');
+const FAKE_OPENCODE = join(here, 'fake-opencode.mjs');
 
 class StubAdapter implements Adapter {
   readonly kind: AdapterKind;
@@ -130,6 +132,62 @@ test('whichAdapterWillRun reports a detected adapter', async () => {
       assert.equal(preview.source, 'detected');
       assert.equal(preview.reason, 'detected_project_adapter');
       assert.equal(preview.ready, true);
+    }),
+  );
+});
+
+test('createSuperconnector precedence is explicit adapter over config over detection', async () => {
+  await withIsolatedHome(() =>
+    withBins({ CLAUDE_BIN: '/no/claude', OPENCODE_BIN: '/no/opencode', CODEX_BIN: FAKE_CODEX }, () => {
+      const cwd = tmpCwd();
+      mkdirSync(join(cwd, '.codex'));
+      writeConfig(globalConfigPath(), { preferredAdapter: 'opencode' });
+
+      const explicit = withProcessCwd(cwd, () => createSuperconnector({
+        cwd,
+        adapter: new StubAdapter('claude-code'),
+      }));
+      assert.equal(explicit.getAdapter().kind, 'claude-code');
+      assert.equal(explicit.whichAdapterWillRun().source, 'explicit');
+
+      const configured = withProcessCwd(cwd, () => createSuperconnector({ cwd }));
+      assert.equal(configured.getAdapter().kind, 'opencode');
+      assert.equal(configured.whichAdapterWillRun().source, 'config');
+    }),
+  );
+
+  await withIsolatedHome(() =>
+    withBins({ CLAUDE_BIN: '/no/claude', OPENCODE_BIN: '/no/opencode', CODEX_BIN: FAKE_CODEX }, () => {
+      const cwd = tmpCwd();
+      mkdirSync(join(cwd, '.codex'));
+
+      const detected = withProcessCwd(cwd, () => createSuperconnector({ cwd }));
+      assert.equal(detected.getAdapter().kind, 'codex');
+      assert.equal(detected.whichAdapterWillRun().source, 'detected');
+    }),
+  );
+});
+
+test('whichAdapterWillRun reports each detected built-in adapter with fake binaries', async () => {
+  await withIsolatedHome(() =>
+    withBins({ CLAUDE_BIN: FAKE_CLAUDE, OPENCODE_BIN: '/no/opencode', CODEX_BIN: '/no/codex' }, () => {
+      const cwd = tmpCwd();
+      writeFileSync(join(cwd, 'CLAUDE.md'), '# claude');
+      assert.equal(withProcessCwd(cwd, () => createSuperconnector({ cwd }).whichAdapterWillRun().adapter), 'claude-code');
+    }),
+  );
+  await withIsolatedHome(() =>
+    withBins({ CLAUDE_BIN: '/no/claude', OPENCODE_BIN: FAKE_OPENCODE, CODEX_BIN: '/no/codex' }, () => {
+      const cwd = tmpCwd();
+      writeFileSync(join(cwd, 'opencode.json'), '{}');
+      assert.equal(withProcessCwd(cwd, () => createSuperconnector({ cwd }).whichAdapterWillRun().adapter), 'opencode');
+    }),
+  );
+  await withIsolatedHome(() =>
+    withBins({ CLAUDE_BIN: '/no/claude', OPENCODE_BIN: '/no/opencode', CODEX_BIN: FAKE_CODEX }, () => {
+      const cwd = tmpCwd();
+      writeFileSync(join(cwd, 'AGENTS.md'), '# agents');
+      assert.equal(withProcessCwd(cwd, () => createSuperconnector({ cwd }).whichAdapterWillRun().adapter), 'codex');
     }),
   );
 });
@@ -275,4 +333,3 @@ test('whichAdapterWillRun reports unknown explicit resume sessions', async () =>
     });
   });
 });
-

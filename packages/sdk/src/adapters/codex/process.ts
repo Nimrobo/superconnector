@@ -56,6 +56,11 @@ export async function* runCodex(args: RunCodexArgs): AsyncIterable<AgentMessage>
 
   let observedSessionId = '';
   let buf = '';
+  let stdoutEnded = !child.stdout;
+  let childClosed = false;
+  const maybeCloseStream = () => {
+    if (childClosed && stdoutEnded) stream.close();
+  };
   const flushLine = (line: string) => {
     if (!line) return;
     const parsed = parseLine(line);
@@ -79,6 +84,8 @@ export async function* runCodex(args: RunCodexArgs): AsyncIterable<AgentMessage>
     child.stdout.on('end', () => {
       if (buf.trim()) flushLine(buf.trim());
       buf = '';
+      stdoutEnded = true;
+      maybeCloseStream();
     });
   }
 
@@ -90,7 +97,8 @@ export async function* runCodex(args: RunCodexArgs): AsyncIterable<AgentMessage>
   });
   child.once('close', (code) => {
     exitRef.value = { code };
-    stream.close();
+    childClosed = true;
+    maybeCloseStream();
   });
 
   try {

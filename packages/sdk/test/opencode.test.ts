@@ -9,7 +9,9 @@ import {
   hasModelFlag,
   parseModelsOutput,
 } from '../src/adapters/opencode/index.js';
+import { runOpenCode } from '../src/adapters/opencode/process.js';
 import { AdapterFailedError } from '../src/errors.js';
+import type { AgentMessage } from '../src/types.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const FAKE_OPENCODE = join(here, 'fake-opencode.mjs');
@@ -248,6 +250,51 @@ test('spawn throws AdapterFailedError when the binary exits non-zero', async () 
       },
       (e: unknown) => e instanceof AdapterFailedError && /simulated failure/.test((e as AdapterFailedError).stderr),
     );
+  } finally {
+    if (prev === undefined) delete process.env.RUN_SCENARIO;
+    else process.env.RUN_SCENARIO = prev;
+  }
+});
+
+test('runOpenCode ignores malformed/unknown lines and handles partial large stream chunks', async () => {
+  const cwd = mkdtempSync(join(tmpdir(), 'oc-cwd-'));
+  const prev = process.env.RUN_SCENARIO;
+  process.env.RUN_SCENARIO = 'malformed-stream';
+  try {
+    const msgs: AgentMessage[] = [];
+    for await (const ev of runOpenCode({ binPath: FAKE_OPENCODE, args: ['run', '--format', 'json', 'p'], cwd })) {
+      msgs.push(ev);
+    }
+    assert.deepEqual(
+      msgs.map((m) => m.type),
+      ['superconnector', 'assistant', 'assistant', 'result'],
+    );
+    assert.equal((msgs[1]!.content as { text?: string }).text, 'partial');
+    assert.equal((msgs[2]!.content as { text?: string }).text?.length, 8192);
+  } finally {
+    if (prev === undefined) delete process.env.RUN_SCENARIO;
+    else process.env.RUN_SCENARIO = prev;
+  }
+});
+
+test('runOpenCode stops cleanly when aborted', async () => {
+  const cwd = mkdtempSync(join(tmpdir(), 'oc-cwd-'));
+  const prev = process.env.RUN_SCENARIO;
+  process.env.RUN_SCENARIO = 'slow';
+  const ctrl = new AbortController();
+  setTimeout(() => ctrl.abort(), 50);
+  try {
+    const msgs: AgentMessage[] = [];
+    for await (const ev of runOpenCode({
+      binPath: FAKE_OPENCODE,
+      args: ['run', '--format', 'json', 'p'],
+      cwd,
+      signal: ctrl.signal,
+    })) {
+      msgs.push(ev);
+    }
+    assert.ok(ctrl.signal.aborted);
+    assert.equal(msgs[0]!.type, 'superconnector');
   } finally {
     if (prev === undefined) delete process.env.RUN_SCENARIO;
     else process.env.RUN_SCENARIO = prev;
