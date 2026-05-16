@@ -13,11 +13,11 @@ import {
   type AdapterKind,
   type AgentMessage,
   type WhichAdapterWillRunResult,
-} from "@nimrobo/superconnector";
+} from '@nimrobo/superconnector';
 
 export interface AgentRunEvent {
   sessionId: string;
-  type: AgentMessage["type"];
+  type: AgentMessage['type'];
   content: unknown;
 }
 
@@ -57,7 +57,7 @@ export function createAgentService(args: AgentServiceOptions) {
 
     previewResume(sessionId: string): WhichAdapterWillRunResult {
       return sc.whichAdapterWillRun({
-        operation: "resume",
+        operation: 'resume',
         sessionId,
         appId: args.appId,
         ...(args.sessionSelector !== undefined ? { sessionSelector: args.sessionSelector } : {}),
@@ -69,20 +69,24 @@ export function createAgentService(args: AgentServiceOptions) {
         prompt,
         appId: args.appId,
         ...(args.sessionSelector !== undefined ? { sessionSelector: args.sessionSelector } : {}),
-        permissionMode: "read",
+        permissionMode: 'read',
         signal,
       })) {
         yield normalizeMessage(msg);
       }
     },
 
-    async *resume(sessionId: string, prompt: string, signal?: AbortSignal): AsyncIterable<AgentRunEvent> {
+    async *resume(
+      sessionId: string,
+      prompt: string,
+      signal?: AbortSignal,
+    ): AsyncIterable<AgentRunEvent> {
       for await (const msg of sc.resume({
         sessionId,
         prompt,
         appId: args.appId,
         ...(args.sessionSelector !== undefined ? { sessionSelector: args.sessionSelector } : {}),
-        permissionMode: "read",
+        permissionMode: 'read',
         signal,
       })) {
         yield normalizeMessage(msg);
@@ -106,7 +110,7 @@ Use an explicit adapter when the app owns the runtime choice:
 
 ```ts
 const sc = createSuperconnector({
-  adapter: "claude-code",
+  adapter: 'claude-code',
 });
 ```
 
@@ -119,16 +123,16 @@ const sc = createSuperconnector();
 Pass `cwd` only when intentionally narrowing the agent process to the current process directory or a child directory:
 
 ```ts
-const sc = createSuperconnector({ cwd: "packages/app" });
+const sc = createSuperconnector({ cwd: 'packages/app' });
 ```
 
 Detection requires both a binary and a project marker:
 
-| Adapter | Binary | Marker |
-| --- | --- | --- |
-| `claude-code` | `claude` or `CLAUDE_BIN` | `CLAUDE.md` or `.claude` |
-| `opencode` | `opencode` or `OPENCODE_BIN` | `opencode.json` or `.opencode` |
-| `codex` | `codex` or `CODEX_BIN` | `AGENTS.md` or `.codex` |
+| Adapter       | Binary                       | Marker                         |
+| ------------- | ---------------------------- | ------------------------------ |
+| `claude-code` | `claude` or `CLAUDE_BIN`     | `CLAUDE.md` or `.claude`       |
+| `opencode`    | `opencode` or `OPENCODE_BIN` | `opencode.json` or `.opencode` |
+| `codex`       | `codex` or `CODEX_BIN`       | `AGENTS.md` or `.codex`        |
 
 Choose `claude-code` when the app needs approval callbacks. OpenCode and Codex can run sessions, but they do not currently support Superconnector approval callbacks.
 
@@ -136,7 +140,7 @@ Use `whichAdapterWillRun()` when the consumer UI needs to show or confirm the ru
 
 ```ts
 const run = {
-  appId: "my-consumer-app",
+  appId: 'my-consumer-app',
   sessionSelector: workspaceId,
   resumeLastCreatedSession: true,
 };
@@ -154,8 +158,8 @@ For an explicit resume UI, preview with the selected session id:
 
 ```ts
 const preview = sc.whichAdapterWillRun({
-  operation: "resume",
-  appId: "my-consumer-app",
+  operation: 'resume',
+  appId: 'my-consumer-app',
   sessionSelector: workspaceId,
   sessionId: selected.sessionId,
 });
@@ -170,10 +174,10 @@ Use this for simple apps with one active thread per workspace, or one active thr
 ```ts
 for await (const msg of sc.spawn({
   prompt,
-  appId: "my-consumer-app",
+  appId: 'my-consumer-app',
   sessionSelector: workspaceId,
   resumeLastCreatedSession: true,
-  permissionMode: "read",
+  permissionMode: 'read',
   signal,
 })) {
   publish(msg);
@@ -185,13 +189,14 @@ for await (const msg of sc.spawn({
 ## Multi-Session Resume
 
 ```ts
-const sessions = workspaceId === undefined
-  ? sc.listSessions({ appId: "my-consumer-app" })
-  : sc.listSessions({ appId: "my-consumer-app", sessionSelector: workspaceId });
+const sessions =
+  workspaceId === undefined
+    ? sc.listSessions({ appId: 'my-consumer-app' })
+    : sc.listSessions({ appId: 'my-consumer-app', sessionSelector: workspaceId });
 const selected = sessions.find((s) => s.sessionId === requestedSessionId);
 
 if (!selected) {
-  throw new Error("Unknown agent session");
+  throw new Error('Unknown agent session');
 }
 
 for await (const msg of sc.resume({
@@ -199,7 +204,7 @@ for await (const msg of sc.resume({
   prompt,
   appId: selected.appId,
   ...(selected.sessionSelector !== undefined ? { sessionSelector: selected.sessionSelector } : {}),
-  permissionMode: "read",
+  permissionMode: 'read',
   signal,
 })) {
   publish(msg);
@@ -215,12 +220,12 @@ Use approvals only with `claude-code` when the app wants an edit-capable run whi
 ```ts
 for await (const msg of sc.spawn({
   prompt,
-  appId: "my-consumer-app",
-  permissionMode: "acceptEdits",
+  appId: 'my-consumer-app',
+  permissionMode: 'acceptEdits',
   approvalTimeoutMs: 60_000,
   onApprovalRequest: async (request) => {
     if (request.cwd !== process.cwd()) {
-      return { decision: "deny", message: "Workspace mismatch" };
+      return { decision: 'deny', message: 'Workspace mismatch' };
     }
 
     const decision = await askUserInUi({
@@ -230,8 +235,8 @@ for await (const msg of sc.spawn({
     });
 
     return decision.approved
-      ? { decision: "allow" }
-      : { decision: "deny", message: decision.reason ?? "Denied by user" };
+      ? { decision: 'allow' }
+      : { decision: 'deny', message: decision.reason ?? 'Denied by user' };
   },
 })) {
   publish(msg);
@@ -255,7 +260,7 @@ try {
 } catch (error) {
   if (error instanceof PermissionRequiredError) {
     publishError({
-      code: "permission_required",
+      code: 'permission_required',
       message: error.message,
       sessionId: error.sessionId,
       resumeCommand: error.resumeCommand,
@@ -265,7 +270,7 @@ try {
 
   if (error instanceof UnknownSessionError) {
     publishError({
-      code: "unknown_session",
+      code: 'unknown_session',
       message: error.message,
     });
     return;
@@ -273,14 +278,14 @@ try {
 
   if (error instanceof AdapterNotSetError) {
     publishError({
-      code: "adapter_not_set",
+      code: 'adapter_not_set',
       message: error.message,
     });
     return;
   }
 
   publishError({
-    code: "agent_failed",
+    code: 'agent_failed',
     message: error instanceof Error ? error.message : String(error),
   });
 }
@@ -296,9 +301,9 @@ const controller = new AbortController();
 const run = (async () => {
   for await (const msg of sc.spawn({
     prompt,
-    appId: "my-consumer-app",
+    appId: 'my-consumer-app',
     sessionSelector: workspaceId,
-    permissionMode: "read",
+    permissionMode: 'read',
     signal: controller.signal,
   })) {
     publish(msg);
@@ -316,18 +321,13 @@ Use the consumer app's existing cancellation primitive when it can expose an `Ab
 ## Test Adapter
 
 ```ts
-import type {
-  Adapter,
-  AgentMessage,
-  ResumeOptions,
-  SpawnOptions,
-} from "@nimrobo/superconnector";
+import type { Adapter, AgentMessage, ResumeOptions, SpawnOptions } from '@nimrobo/superconnector';
 
 export class StubAdapter implements Adapter {
-  readonly kind = "claude-code" as const;
+  readonly kind = 'claude-code' as const;
   spawnCalls: SpawnOptions[] = [];
   resumeCalls: ResumeOptions[] = [];
-  nextSessionId = "stub-session-1";
+  nextSessionId = 'stub-session-1';
 
   detect(): boolean {
     return true;
@@ -337,9 +337,9 @@ export class StubAdapter implements Adapter {
     this.spawnCalls.push(opts);
     const sessionId = this.nextSessionId;
     return (async function* () {
-      yield { type: "system", sessionId, content: { started: true } };
-      yield { type: "assistant", sessionId, content: { text: "Hello" } };
-      yield { type: "result", sessionId, content: { ok: true } };
+      yield { type: 'system', sessionId, content: { started: true } };
+      yield { type: 'assistant', sessionId, content: { text: 'Hello' } };
+      yield { type: 'result', sessionId, content: { ok: true } };
     })();
   }
 
@@ -347,41 +347,41 @@ export class StubAdapter implements Adapter {
     this.resumeCalls.push(opts);
     const sessionId = opts.sessionId;
     return (async function* () {
-      yield { type: "assistant", sessionId, content: { text: "Resumed" } };
-      yield { type: "result", sessionId, content: { ok: true } };
+      yield { type: 'assistant', sessionId, content: { text: 'Resumed' } };
+      yield { type: 'result', sessionId, content: { ok: true } };
     })();
   }
 }
 ```
 
 ```ts
-import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { createSuperconnector } from "@nimrobo/superconnector";
+import assert from 'node:assert/strict';
+import { mkdirSync, mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { createSuperconnector } from '@nimrobo/superconnector';
 
-const home = mkdtempSync(join(tmpdir(), "sc-test-home-"));
+const home = mkdtempSync(join(tmpdir(), 'sc-test-home-'));
 process.env.SUPERCONNECTOR_HOME = home;
 
-const base = mkdtempSync(join(tmpdir(), "sc-test-cwd-"));
-const cwd = join(base, "workspace");
+const base = mkdtempSync(join(tmpdir(), 'sc-test-cwd-'));
+const cwd = join(base, 'workspace');
 mkdirSync(cwd);
 process.chdir(base);
 
 const adapter = new StubAdapter();
-const sc = createSuperconnector({ cwd: "workspace", adapter });
+const sc = createSuperconnector({ cwd: 'workspace', adapter });
 
 const seen: string[] = [];
 for await (const msg of sc.spawn({
-  prompt: "Plan",
-  appId: "test-app",
-  sessionSelector: "workspace-a",
+  prompt: 'Plan',
+  appId: 'test-app',
+  sessionSelector: 'workspace-a',
 })) {
   seen.push(msg.type);
 }
 
-const sessions = sc.listSessions({ appId: "test-app", sessionSelector: "workspace-a" });
+const sessions = sc.listSessions({ appId: 'test-app', sessionSelector: 'workspace-a' });
 assert.equal(sessions.length, 1);
 ```
 

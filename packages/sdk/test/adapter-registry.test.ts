@@ -9,11 +9,10 @@ import {
 
 test('built-in adapter registry exposes supported adapters in priority order', () => {
   assert.deepEqual([...ADAPTER_KINDS], ['claude-code', 'opencode', 'codex']);
-  assert.deepEqual(createBuiltinAdapters().map((adapter) => adapter.kind), [
-    'claude-code',
-    'opencode',
-    'codex',
-  ]);
+  assert.deepEqual(
+    createBuiltinAdapters().map((adapter) => adapter.kind),
+    ['claude-code', 'opencode', 'codex'],
+  );
 });
 
 test('createBuiltinAdapter applies per-adapter model config', () => {

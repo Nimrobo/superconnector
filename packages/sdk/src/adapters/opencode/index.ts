@@ -74,7 +74,10 @@ export class OpenCodeAdapter implements Adapter {
   }
 
   detect(cwd: string): boolean {
-    return this.binaryAvailable && (isDirectory(join(cwd, '.opencode')) || pathExists(join(cwd, 'opencode.json')));
+    return (
+      this.binaryAvailable &&
+      (isDirectory(join(cwd, '.opencode')) || pathExists(join(cwd, 'opencode.json')))
+    );
   }
 
   spawn(opts: SpawnOptions, cwd: string): AsyncIterable<AgentMessage> {

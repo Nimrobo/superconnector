@@ -35,7 +35,10 @@ function sanitize(raw: unknown): SuperconnectorConfig | null {
   if (typeof r['preferredAdapter'] === 'string' && isAdapterKind(r['preferredAdapter'])) {
     out.preferredAdapter = r['preferredAdapter'];
   }
-  if (typeof r['permissionMode'] === 'string' && VALID_PERMISSION_MODES.has(r['permissionMode'] as PermissionMode)) {
+  if (
+    typeof r['permissionMode'] === 'string' &&
+    VALID_PERMISSION_MODES.has(r['permissionMode'] as PermissionMode)
+  ) {
     out.permissionMode = r['permissionMode'] as PermissionMode;
   }
   if (r['models'] && typeof r['models'] === 'object') {

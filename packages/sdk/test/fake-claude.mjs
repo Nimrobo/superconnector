@@ -48,12 +48,18 @@ if (scenario === 'ok') {
   process.exit(1);
 } else if (scenario === 'malformed-stream') {
   await writeOut('{not json}\n');
-  await writeOut(`${JSON.stringify({ type: 'future_event', session_id: sid, message: { ignored: true } })}\n`);
+  await writeOut(
+    `${JSON.stringify({ type: 'future_event', session_id: sid, message: { ignored: true } })}\n`,
+  );
   await writeOut('{"type":"assistant","session_id":"');
   await writeOut(`${sid}","message":{"content":"partial"}}\n`);
-  await writeOut(`${JSON.stringify({ type: 'assistant', session_id: sid, message: { content: 'x'.repeat(8192) } })}\n`);
+  await writeOut(
+    `${JSON.stringify({ type: 'assistant', session_id: sid, message: { content: 'x'.repeat(8192) } })}\n`,
+  );
   process.stderr.write(`${'warn '.repeat(600)}tail-warning\n`);
-  await writeOut(`${JSON.stringify({ type: 'result', subtype: 'success', session_id: sid, result: 'done' })}\n`);
+  await writeOut(
+    `${JSON.stringify({ type: 'result', subtype: 'success', session_id: sid, result: 'done' })}\n`,
+  );
   process.exit(0);
 } else if (scenario === 'slow') {
   setInterval(() => {}, 1000); // keep alive until killed

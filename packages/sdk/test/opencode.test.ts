@@ -63,27 +63,26 @@ test('parseModelsOutput tolerates whitespace prefixes and inline markers', () =>
     '   ',
   ].join('\n');
   const models = parseModelsOutput(out);
-  assert.deepEqual(models.map((m) => m.id), [
-    'opencode/big-pickle',
-    'anthropic/claude-sonnet-4-5',
-    'google/gemini-2.5-pro',
-  ]);
+  assert.deepEqual(
+    models.map((m) => m.id),
+    ['opencode/big-pickle', 'anthropic/claude-sonnet-4-5', 'google/gemini-2.5-pro'],
+  );
 });
 
 test('parseModelsOutput strips ANSI color codes', () => {
   const out = '[32mopencode/big-pickle[0m\n';
-  assert.deepEqual(parseModelsOutput(out), [
-    { id: 'opencode/big-pickle', label: 'big-pickle' },
-  ]);
+  assert.deepEqual(parseModelsOutput(out), [{ id: 'opencode/big-pickle', label: 'big-pickle' }]);
 });
 
 test('parseModelsOutput dedupes and skips malformed slash tokens', () => {
-  const out = ['opencode/big-pickle', 'opencode/big-pickle', '/oops', 'trailing/', 'header line'].join(
-    '\n',
-  );
-  assert.deepEqual(parseModelsOutput(out), [
-    { id: 'opencode/big-pickle', label: 'big-pickle' },
-  ]);
+  const out = [
+    'opencode/big-pickle',
+    'opencode/big-pickle',
+    '/oops',
+    'trailing/',
+    'header line',
+  ].join('\n');
+  assert.deepEqual(parseModelsOutput(out), [{ id: 'opencode/big-pickle', label: 'big-pickle' }]);
 });
 
 // --- listModels -------------------------------------------------------------
@@ -92,11 +91,10 @@ test('listModels invokes the binary and parses output', async () => {
   const adapter = new OpenCodeAdapter({ binPath: FAKE_OPENCODE });
   const cwd = mkdtempSync(join(tmpdir(), 'oc-cwd-'));
   const models = await adapter.listModels(cwd);
-  assert.deepEqual(models.map((m) => m.id), [
-    'opencode/big-pickle',
-    'anthropic/claude-sonnet-4-5',
-    'google/gemini-2.5-pro',
-  ]);
+  assert.deepEqual(
+    models.map((m) => m.id),
+    ['opencode/big-pickle', 'anthropic/claude-sonnet-4-5', 'google/gemini-2.5-pro'],
+  );
 });
 
 test('listModels passes cwd to the spawned binary', async () => {
@@ -185,9 +183,7 @@ test('spawn does not duplicate --model when extraArgs supplies --model=foo', asy
       /* drain */
     }
     const args = readArgs(argsPath);
-    const modelOccurrences = args.filter(
-      (a) => a === '--model' || a.startsWith('--model='),
-    ).length;
+    const modelOccurrences = args.filter((a) => a === '--model' || a.startsWith('--model=')).length;
     assert.equal(modelOccurrences, 1, 'only the extraArgs --model= form is present');
     assert.ok(args.includes('--model=google/gemini-2.5-pro'));
     assert.ok(!args.includes('anthropic/claude-sonnet-4-5'));
@@ -228,7 +224,10 @@ test('spawn maps NDJSON events to AgentMessage stream with shared sessionId', as
     assert.equal(seen[0]!.sessionId, '');
     // Then the NDJSON events, all sharing ses_test-1
     const rest = seen.slice(1);
-    assert.deepEqual(rest.map((s) => s.type), ['system', 'assistant', 'result']);
+    assert.deepEqual(
+      rest.map((s) => s.type),
+      ['system', 'assistant', 'result'],
+    );
     assert.ok(rest.every((s) => s.sessionId === 'ses_test-1'));
   } finally {
     if (prev === undefined) delete process.env.FAKE_SESSION_ID;
@@ -248,7 +247,9 @@ test('spawn throws AdapterFailedError when the binary exits non-zero', async () 
           /* drain */
         }
       },
-      (e: unknown) => e instanceof AdapterFailedError && /simulated failure/.test((e as AdapterFailedError).stderr),
+      (e: unknown) =>
+        e instanceof AdapterFailedError &&
+        /simulated failure/.test((e as AdapterFailedError).stderr),
     );
   } finally {
     if (prev === undefined) delete process.env.RUN_SCENARIO;
@@ -262,7 +263,11 @@ test('runOpenCode ignores malformed/unknown lines and handles partial large stre
   process.env.RUN_SCENARIO = 'malformed-stream';
   try {
     const msgs: AgentMessage[] = [];
-    for await (const ev of runOpenCode({ binPath: FAKE_OPENCODE, args: ['run', '--format', 'json', 'p'], cwd })) {
+    for await (const ev of runOpenCode({
+      binPath: FAKE_OPENCODE,
+      args: ['run', '--format', 'json', 'p'],
+      cwd,
+    })) {
       msgs.push(ev);
     }
     assert.deepEqual(

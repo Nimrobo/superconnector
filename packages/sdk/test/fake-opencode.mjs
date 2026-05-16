@@ -34,7 +34,9 @@ if (sub === 'models') {
   if (out !== undefined) {
     process.stdout.write(out);
   } else {
-    process.stdout.write('opencode/big-pickle\nanthropic/claude-sonnet-4-5\ngoogle/gemini-2.5-pro\n');
+    process.stdout.write(
+      'opencode/big-pickle\nanthropic/claude-sonnet-4-5\ngoogle/gemini-2.5-pro\n',
+    );
   }
   process.exit(0);
 }
@@ -49,11 +51,17 @@ if (sub === 'run') {
     process.exit(1);
   } else if (process.env.RUN_SCENARIO === 'malformed-stream') {
     await writeOut('not-json\n');
-    await writeOut(`${JSON.stringify({ type: 'future_event', sessionID: sid, part: { ignored: true } })}\n`);
+    await writeOut(
+      `${JSON.stringify({ type: 'future_event', sessionID: sid, part: { ignored: true } })}\n`,
+    );
     await writeOut('{"type":"text","sessionID":"');
     await writeOut(`${sid}","part":{"type":"text","text":"partial"}}\n`);
-    await writeOut(`${JSON.stringify({ type: 'text', sessionID: sid, part: { type: 'text', text: 'x'.repeat(8192) } })}\n`);
-    await writeOut(`${JSON.stringify({ type: 'step_finish', sessionID: sid, part: { type: 'step-finish', reason: 'stop' } })}\n`);
+    await writeOut(
+      `${JSON.stringify({ type: 'text', sessionID: sid, part: { type: 'text', text: 'x'.repeat(8192) } })}\n`,
+    );
+    await writeOut(
+      `${JSON.stringify({ type: 'step_finish', sessionID: sid, part: { type: 'step-finish', reason: 'stop' } })}\n`,
+    );
     process.exit(0);
   } else {
     emit({ type: 'step_start', sessionID: sid, part: { type: 'step-start' } });

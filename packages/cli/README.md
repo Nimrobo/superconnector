@@ -75,7 +75,7 @@ Example config:
 Use `@nimrobo/superconnector` in application code:
 
 ```ts
-import { createSuperconnector } from "@nimrobo/superconnector";
+import { createSuperconnector } from '@nimrobo/superconnector';
 ```
 
 Use `@nimrobo/superconnector-cli` for user or developer configuration:

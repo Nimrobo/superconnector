@@ -23,16 +23,16 @@ Requirements:
 ## Quick Start
 
 ```ts
-import { createSuperconnector } from "@nimrobo/superconnector";
+import { createSuperconnector } from '@nimrobo/superconnector';
 
 const sc = createSuperconnector({
-  adapter: "claude-code",
+  adapter: 'claude-code',
 });
 
 for await (const message of sc.spawn({
-  prompt: "Inspect this project and summarize the main risks.",
-  appId: "my-app",
-  permissionMode: "read",
+  prompt: 'Inspect this project and summarize the main risks.',
+  appId: 'my-app',
+  permissionMode: 'read',
 })) {
   console.log(message.type, message.sessionId, message.content);
 }
@@ -55,16 +55,16 @@ Use `permissionMode: "read"` for planning, review, and analysis flows. Use `perm
 For explicit multi-session UIs, list sessions and resume the selected id:
 
 ```ts
-const sessions = sc.listSessions({ appId: "my-app", sessionSelector: "workspace-a" });
+const sessions = sc.listSessions({ appId: 'my-app', sessionSelector: 'workspace-a' });
 const selected = sessions[0];
 
 if (selected) {
   for await (const message of sc.resume({
-    prompt: "Continue from the last result.",
+    prompt: 'Continue from the last result.',
     appId: selected.appId,
     sessionSelector: selected.sessionSelector,
     sessionId: selected.sessionId,
-    permissionMode: "read",
+    permissionMode: 'read',
   })) {
     console.log(message);
   }
@@ -75,11 +75,11 @@ For simple "continue this app's latest session" flows, use `resumeLastCreatedSes
 
 ```ts
 for await (const message of sc.spawn({
-  prompt: "Continue working on this task.",
-  appId: "my-app",
-  sessionSelector: "workspace-a",
+  prompt: 'Continue working on this task.',
+  appId: 'my-app',
+  sessionSelector: 'workspace-a',
   resumeLastCreatedSession: true,
-  permissionMode: "read",
+  permissionMode: 'read',
 })) {
   console.log(message);
 }
@@ -122,11 +122,11 @@ Local config overrides global config. Passing an explicit `adapter` to `createSu
 Consumer apps that need to show or confirm the runtime before starting work should call `whichAdapterWillRun()` with the same run-shaped options they will pass to `spawn()` or `resume()`. The preview does not start an agent and does not update session state.
 
 ```ts
-import type { SpawnOptions } from "@nimrobo/superconnector";
+import type { SpawnOptions } from '@nimrobo/superconnector';
 
 const run = {
   prompt,
-  appId: "my-app",
+  appId: 'my-app',
   sessionSelector: workspaceId,
   resumeLastCreatedSession: true,
 } satisfies SpawnOptions;
@@ -142,11 +142,11 @@ console.log(preview.adapter, preview.action, preview.source);
 
 ## Adapter Notes
 
-| Adapter | Detects | Notes |
-| --- | --- | --- |
-| `claude-code` | `CLAUDE.md` or `.claude` plus `claude` on `PATH` | Supports Superconnector approval callbacks through an approval host. |
-| `opencode` | `opencode.json` or `.opencode` plus `opencode` on `PATH` | Runs and streams JSON output. Programmatic approval callbacks are not supported; Superconnector emits an advisory event if one is provided. |
-| `codex` | `AGENTS.md` or `.codex` plus `codex` on `PATH` | Runs `codex exec --json`. Superconnector approval callbacks are rejected in exec mode. |
+| Adapter       | Detects                                                  | Notes                                                                                                                                       |
+| ------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `claude-code` | `CLAUDE.md` or `.claude` plus `claude` on `PATH`         | Supports Superconnector approval callbacks through an approval host.                                                                        |
+| `opencode`    | `opencode.json` or `.opencode` plus `opencode` on `PATH` | Runs and streams JSON output. Programmatic approval callbacks are not supported; Superconnector emits an advisory event if one is provided. |
+| `codex`       | `AGENTS.md` or `.codex` plus `codex` on `PATH`           | Runs `codex exec --json`. Superconnector approval callbacks are rejected in exec mode.                                                      |
 
 Each adapter shells out to the corresponding CLI. Install and authenticate those CLIs separately before using Superconnector.
 
@@ -162,11 +162,11 @@ Approval callbacks are adapter-specific. Claude Code supports an `onApprovalRequ
 ## Public Entry Points
 
 ```ts
-import { createSuperconnector } from "@nimrobo/superconnector";
-import { resolveConfig } from "@nimrobo/superconnector/config";
-import { ClaudeCodeAdapter } from "@nimrobo/superconnector/adapters/claude-code";
-import { OpenCodeAdapter } from "@nimrobo/superconnector/adapters/opencode";
-import { CodexAdapter } from "@nimrobo/superconnector/adapters/codex";
+import { createSuperconnector } from '@nimrobo/superconnector';
+import { resolveConfig } from '@nimrobo/superconnector/config';
+import { ClaudeCodeAdapter } from '@nimrobo/superconnector/adapters/claude-code';
+import { OpenCodeAdapter } from '@nimrobo/superconnector/adapters/opencode';
+import { CodexAdapter } from '@nimrobo/superconnector/adapters/codex';
 ```
 
 See the package docs for more detailed SDK and CLI references:

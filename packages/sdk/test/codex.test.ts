@@ -47,7 +47,9 @@ async function withScenario<T>(scenario: string, fn: () => Promise<T>): Promise<
 
 test('runCodex emits spawn metadata and normalizes Codex JSONL messages', async () => {
   await withScenario('ok', async () => {
-    const msgs = await drain(runCodex({ binPath: FAKE_CODEX, args: ['exec', '--json', 'go'], cwd: tmpCwd() }));
+    const msgs = await drain(
+      runCodex({ binPath: FAKE_CODEX, args: ['exec', '--json', 'go'], cwd: tmpCwd() }),
+    );
     assert.equal(msgs[0]!.type, 'superconnector');
     assert.deepEqual(
       msgs.map((m) => m.type),
@@ -63,7 +65,9 @@ test('runCodex throws AdapterFailedError on nonzero exit', async () => {
   await withScenario('failure', async () => {
     await assert.rejects(
       async () => {
-        await drain(runCodex({ binPath: FAKE_CODEX, args: ['exec', '--json', 'go'], cwd: tmpCwd() }));
+        await drain(
+          runCodex({ binPath: FAKE_CODEX, args: ['exec', '--json', 'go'], cwd: tmpCwd() }),
+        );
       },
       (err) =>
         err instanceof AdapterFailedError &&
@@ -76,7 +80,9 @@ test('runCodex throws AdapterFailedError on nonzero exit', async () => {
 
 test('runCodex ignores malformed lines and handles unknown, partial, and large event chunks', async () => {
   await withScenario('malformed-stream', async () => {
-    const msgs = await drain(runCodex({ binPath: FAKE_CODEX, args: ['exec', '--json', 'go'], cwd: tmpCwd() }));
+    const msgs = await drain(
+      runCodex({ binPath: FAKE_CODEX, args: ['exec', '--json', 'go'], cwd: tmpCwd() }),
+    );
     assert.deepEqual(
       msgs.map((m) => m.type),
       ['superconnector', 'system', 'system', 'assistant', 'assistant', 'result'],
@@ -90,12 +96,14 @@ test('runCodex stops cleanly when aborted', async () => {
   await withScenario('slow', async () => {
     const ctrl = new AbortController();
     setTimeout(() => ctrl.abort(), 50);
-    const msgs = await drain(runCodex({
-      binPath: FAKE_CODEX,
-      args: ['exec', '--json', 'go'],
-      cwd: tmpCwd(),
-      signal: ctrl.signal,
-    }));
+    const msgs = await drain(
+      runCodex({
+        binPath: FAKE_CODEX,
+        args: ['exec', '--json', 'go'],
+        cwd: tmpCwd(),
+        signal: ctrl.signal,
+      }),
+    );
     assert.ok(ctrl.signal.aborted);
     assert.equal(msgs[0]!.type, 'superconnector');
   });
@@ -105,9 +113,12 @@ test('runCodex throws AdapterFailedError when no session id is emitted', async (
   await withScenario('no-session', async () => {
     await assert.rejects(
       async () => {
-        await drain(runCodex({ binPath: FAKE_CODEX, args: ['exec', '--json', 'go'], cwd: tmpCwd() }));
+        await drain(
+          runCodex({ binPath: FAKE_CODEX, args: ['exec', '--json', 'go'], cwd: tmpCwd() }),
+        );
       },
-      (err) => err instanceof AdapterFailedError && /without emitting a session id/.test(err.message),
+      (err) =>
+        err instanceof AdapterFailedError && /without emitting a session id/.test(err.message),
     );
   });
 });
@@ -187,12 +198,17 @@ test('CodexAdapter does not duplicate model when extraArgs already specify one',
 test('CodexAdapter resume builds codex exec resume command', async () => {
   await withScenario('ok', async () => {
     const adapter = new CodexAdapter({ binPath: FAKE_CODEX });
-    const msgs = await drain(adapter.resume({
-      prompt: 'continue',
-      appId: 'app',
-      sessionId: 'resume-sess-1',
-      permissionMode: 'read',
-    }, tmpCwd()));
+    const msgs = await drain(
+      adapter.resume(
+        {
+          prompt: 'continue',
+          appId: 'app',
+          sessionId: 'resume-sess-1',
+          permissionMode: 'read',
+        },
+        tmpCwd(),
+      ),
+    );
 
     const meta = msgs[0]!;
     assert.equal(meta.type, 'superconnector');
@@ -213,15 +229,18 @@ test('CodexAdapter rejects approval callbacks', async () => {
   const adapter = new CodexAdapter({ binPath: FAKE_CODEX });
   await assert.rejects(
     async () => {
-      await drain(adapter.spawn({
-        prompt: 'approve',
-        appId: 'app',
-        onApprovalRequest: async () => ({ decision: 'allow' }),
-      }, tmpCwd()));
+      await drain(
+        adapter.spawn(
+          {
+            prompt: 'approve',
+            appId: 'app',
+            onApprovalRequest: async () => ({ decision: 'allow' }),
+          },
+          tmpCwd(),
+        ),
+      );
     },
-    (err) =>
-      err instanceof AdapterFailedError &&
-      /approval callbacks/.test(err.message),
+    (err) => err instanceof AdapterFailedError && /approval callbacks/.test(err.message),
   );
 });
 

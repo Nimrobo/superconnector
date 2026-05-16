@@ -1,0 +1,45 @@
+name: Bug report
+description: Report a problem with the SDK or CLI
+labels: [bug]
+body:
+  - type: dropdown
+    id: package
+    attributes:
+      label: Affected package
+      options:
+        - '@nimrobo/superconnector (SDK)'
+        - '@nimrobo/superconnector-cli (CLI)'
+        - Both / unsure
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Package version
+      placeholder: e.g. 0.1.0
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: A minimal sequence of steps or a code snippet.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected vs actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment
+      description: Node version, OS, and adapter in use (Claude Code / OpenCode / Codex).
+      placeholder: |
+        Node: 20.x
+        OS: macOS 14
+        Adapter: claude-code
+    validations:
+      required: true

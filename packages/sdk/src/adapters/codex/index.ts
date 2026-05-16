@@ -48,11 +48,18 @@ export class CodexAdapter implements Adapter {
   }
 
   detect(cwd: string): boolean {
-    return this.binaryAvailable && (isDirectory(join(cwd, '.codex')) || pathExists(join(cwd, 'AGENTS.md')));
+    return (
+      this.binaryAvailable &&
+      (isDirectory(join(cwd, '.codex')) || pathExists(join(cwd, 'AGENTS.md')))
+    );
   }
 
   spawn(opts: SpawnOptions, cwd: string): AsyncIterable<AgentMessage> {
-    return this.run(this.buildArgs(['exec', '--json', ...sandboxArgs(opts.permissionMode)], [opts.prompt]), opts, cwd);
+    return this.run(
+      this.buildArgs(['exec', '--json', ...sandboxArgs(opts.permissionMode)], [opts.prompt]),
+      opts,
+      cwd,
+    );
   }
 
   resume(opts: ResumeOptions, cwd: string): AsyncIterable<AgentMessage> {
@@ -82,7 +89,11 @@ export class CodexAdapter implements Adapter {
     return [...allArgs, ...tail];
   }
 
-  private async *run(args: string[], opts: SpawnOptions | ResumeOptions, cwd: string): AsyncIterable<AgentMessage> {
+  private async *run(
+    args: string[],
+    opts: SpawnOptions | ResumeOptions,
+    cwd: string,
+  ): AsyncIterable<AgentMessage> {
     if (opts.onApprovalRequest) {
       throw new AdapterFailedError(
         'Codex exec mode does not support Superconnector approval callbacks',
@@ -101,7 +112,11 @@ export class CodexAdapter implements Adapter {
   }
 }
 
-function readModelCatalog(binPath: string, args: string[], cwd: string): Promise<AdapterModel[] | null> {
+function readModelCatalog(
+  binPath: string,
+  args: string[],
+  cwd: string,
+): Promise<AdapterModel[] | null> {
   return new Promise((resolve) => {
     const child = spawn(binPath, args, {
       cwd,

@@ -1,14 +1,16 @@
 import { realpathSync, statSync } from 'node:fs';
 import { hostname, platform, userInfo } from 'node:os';
 import { isAbsolute, relative, resolve, sep } from 'node:path';
-import { ClaudeCodeAdapter } from './adapters/claude-code/index.js';
-import { CodexAdapter } from './adapters/codex/index.js';
 import { buildCodexResumeCommand } from './adapters/codex/process.js';
-import { OpenCodeAdapter } from './adapters/opencode/index.js';
 import { createBuiltinAdapter } from './adapters/registry.js';
 import { resolveConfig, type SuperconnectorConfig } from './config.js';
 import { detectAdapter } from './detect.js';
-import { AdapterNotSetError, InvalidCwdError, PermissionRequiredError, UnknownSessionError } from './errors.js';
+import {
+  AdapterNotSetError,
+  InvalidCwdError,
+  PermissionRequiredError,
+  UnknownSessionError,
+} from './errors.js';
 import {
   appendApproval,
   defaultRegistryPaths,
@@ -42,7 +44,12 @@ export { detectAdapter } from './detect.js';
 export { ClaudeCodeAdapter } from './adapters/claude-code/index.js';
 export { OpenCodeAdapter } from './adapters/opencode/index.js';
 export { CodexAdapter } from './adapters/codex/index.js';
-export { ADAPTER_KINDS, createBuiltinAdapter, createBuiltinAdapters, isAdapterKind } from './adapters/registry.js';
+export {
+  ADAPTER_KINDS,
+  createBuiltinAdapter,
+  createBuiltinAdapters,
+  isAdapterKind,
+} from './adapters/registry.js';
 
 export interface CreateOptions {
   adapter?: Adapter | AdapterKind;
@@ -133,16 +140,20 @@ export function createSuperconnector(opts: CreateOptions = {}): Superconnector {
       adapter: adapter.kind,
       source: adapterSource,
       ready: true,
-      reason: adapterSource === 'explicit'
-        ? 'explicit_adapter'
-        : adapterSource === 'config'
-          ? 'configured_preferred_adapter'
-          : 'detected_project_adapter',
+      reason:
+        adapterSource === 'explicit'
+          ? 'explicit_adapter'
+          : adapterSource === 'config'
+            ? 'configured_preferred_adapter'
+            : 'detected_project_adapter',
       session: null,
     };
   };
 
-  const sessionPreview = (session: SessionRecord, reason: 'latest_session' | 'explicit_session'): WhichAdapterWillRunResult => ({
+  const sessionPreview = (
+    session: SessionRecord,
+    reason: 'latest_session' | 'explicit_session',
+  ): WhichAdapterWillRunResult => ({
     cwd,
     action: 'resume',
     adapter: session.adapter,
@@ -179,7 +190,8 @@ export function createSuperconnector(opts: CreateOptions = {}): Superconnector {
         const found = listSessionsImpl({ cwd, appId: previewOpts.appId }).find(
           (s) =>
             s.sessionId === previewOpts.sessionId &&
-            (previewOpts.sessionSelector === undefined || s.sessionSelector === previewOpts.sessionSelector),
+            (previewOpts.sessionSelector === undefined ||
+              s.sessionSelector === previewOpts.sessionSelector),
         );
         return found ? sessionPreview(found, 'explicit_session') : unknownSessionPreview();
       }
@@ -188,7 +200,9 @@ export function createSuperconnector(opts: CreateOptions = {}): Superconnector {
         const latest = findLatestSession({
           cwd,
           appId: previewOpts.appId,
-          ...(previewOpts.sessionSelector !== undefined ? { sessionSelector: previewOpts.sessionSelector } : {}),
+          ...(previewOpts.sessionSelector !== undefined
+            ? { sessionSelector: previewOpts.sessionSelector }
+            : {}),
         });
         if (latest) return sessionPreview(latest, 'latest_session');
       }
@@ -199,16 +213,16 @@ export function createSuperconnector(opts: CreateOptions = {}): Superconnector {
       return requireAdapter();
     },
     setAdapter(next: Adapter | AdapterKind): void {
-      adapter = rememberAdapter(
-        typeof next === 'string' ? buildAdapter(next, config) : next,
-      );
+      adapter = rememberAdapter(typeof next === 'string' ? buildAdapter(next, config) : next);
       adapterSource = 'explicit';
     },
     listSessions(filter?: { appId?: string; sessionSelector?: string }): SessionRecord[] {
       return listSessionsImpl({
         cwd,
         ...(filter?.appId !== undefined ? { appId: filter.appId } : {}),
-        ...(filter?.sessionSelector !== undefined ? { sessionSelector: filter.sessionSelector } : {}),
+        ...(filter?.sessionSelector !== undefined
+          ? { sessionSelector: filter.sessionSelector }
+          : {}),
       });
     },
     spawn(spawnOpts: SpawnOptions): AsyncIterable<AgentMessage> {
@@ -219,7 +233,9 @@ export function createSuperconnector(opts: CreateOptions = {}): Superconnector {
         const latest = findLatestSession({
           cwd,
           appId: spawnOpts.appId,
-          ...(spawnOpts.sessionSelector !== undefined ? { sessionSelector: spawnOpts.sessionSelector } : {}),
+          ...(spawnOpts.sessionSelector !== undefined
+            ? { sessionSelector: spawnOpts.sessionSelector }
+            : {}),
         });
         if (latest) {
           return runResume(
@@ -228,7 +244,9 @@ export function createSuperconnector(opts: CreateOptions = {}): Superconnector {
               prompt: spawnOpts.prompt,
               appId: spawnOpts.appId,
               sessionId: latest.sessionId,
-              ...(spawnOpts.sessionSelector !== undefined ? { sessionSelector: spawnOpts.sessionSelector } : {}),
+              ...(spawnOpts.sessionSelector !== undefined
+                ? { sessionSelector: spawnOpts.sessionSelector }
+                : {}),
               ...(spawnOpts.signal !== undefined ? { signal: spawnOpts.signal } : {}),
               ...(spawnOpts.permissionMode !== undefined
                 ? { permissionMode: spawnOpts.permissionMode }
@@ -254,10 +272,16 @@ export function createSuperconnector(opts: CreateOptions = {}): Superconnector {
       const found = listSessionsImpl({ cwd, appId: resumeOpts.appId }).find(
         (s) =>
           s.sessionId === resumeOpts.sessionId &&
-          (resumeOpts.sessionSelector === undefined || s.sessionSelector === resumeOpts.sessionSelector),
+          (resumeOpts.sessionSelector === undefined ||
+            s.sessionSelector === resumeOpts.sessionSelector),
       );
       if (!found) {
-        throw new UnknownSessionError(resumeOpts.sessionId, resumeOpts.appId, cwd, resumeOpts.sessionSelector);
+        throw new UnknownSessionError(
+          resumeOpts.sessionId,
+          resumeOpts.appId,
+          cwd,
+          resumeOpts.sessionSelector,
+        );
       }
       const a = adapterForRecordedSession(found.adapter);
       return runResume(a, resumeOpts, cwd);
@@ -372,7 +396,12 @@ async function* runSpawn(
   let pendingMeta: SpawnMeta | null = null;
   let logged = false;
   let observedSessionId = '';
-  const pendingApprovals: Array<{ at: string; toolName: string; decision: 'allow' | 'deny'; reason: string }> = [];
+  const pendingApprovals: Array<{
+    at: string;
+    toolName: string;
+    decision: 'allow' | 'deny';
+    reason: string;
+  }> = [];
 
   try {
     for await (const msg of adapter.spawn(opts, cwd)) {
@@ -396,7 +425,9 @@ async function* runSpawn(
             sessionId: observedSessionId,
             adapter: adapter.kind,
             appId: opts.appId,
-            ...(opts.sessionSelector !== undefined ? { sessionSelector: opts.sessionSelector } : {}),
+            ...(opts.sessionSelector !== undefined
+              ? { sessionSelector: opts.sessionSelector }
+              : {}),
             cwd,
             meta: pendingMeta,
             prompt: opts.prompt,
@@ -433,7 +464,10 @@ async function* runSpawn(
     if (logged && observedSessionId) {
       const patch: Partial<SessionLog> = {
         closedAt: new Date().toISOString(),
-        exitCode: e instanceof Error && 'exitCode' in e ? ((e as { exitCode: number | null }).exitCode) : null,
+        exitCode:
+          e instanceof Error && 'exitCode' in e
+            ? (e as { exitCode: number | null }).exitCode
+            : null,
       };
       if (e instanceof PermissionRequiredError) {
         patch.permissionFailure = true;
@@ -489,9 +523,4 @@ async function* runResume(
 }
 
 // re-export registry helpers for power users
-export {
-  defaultRegistryPaths,
-  listSessionsImpl as listSessions,
-  readSessionLog,
-  sessionLogPath,
-};
+export { defaultRegistryPaths, listSessionsImpl as listSessions, readSessionLog, sessionLogPath };

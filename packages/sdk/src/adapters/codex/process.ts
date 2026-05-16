@@ -119,7 +119,11 @@ export async function* runCodex(args: RunCodexArgs): AsyncIterable<AgentMessage>
     throw new AdapterFailedError(`codex exited with code ${code}`, code, stderr.slice(-2000));
   }
   if (!observedSessionId && !aborted) {
-    throw new AdapterFailedError('codex exited without emitting a session id', code, stderr.slice(-2000));
+    throw new AdapterFailedError(
+      'codex exited without emitting a session id',
+      code,
+      stderr.slice(-2000),
+    );
   }
 }
 

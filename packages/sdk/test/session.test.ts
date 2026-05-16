@@ -6,7 +6,13 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createSuperconnector } from '../src/index.js';
 import { recordSpawn } from '../src/registry.js';
-import type { Adapter, AdapterKind, AgentMessage, ResumeOptions, SpawnOptions } from '../src/types.js';
+import type {
+  Adapter,
+  AdapterKind,
+  AgentMessage,
+  ResumeOptions,
+  SpawnOptions,
+} from '../src/types.js';
 import { UnknownSessionError } from '../src/errors.js';
 import { withProcessCwd } from './test-util.js';
 
@@ -41,7 +47,11 @@ class StubAdapter implements Adapter {
     this.resumeCalls.push(opts);
     const sid = opts.sessionId;
     return (async function* () {
-      yield { type: 'assistant', sessionId: sid, content: { text: 'resumed' } } satisfies AgentMessage;
+      yield {
+        type: 'assistant',
+        sessionId: sid,
+        content: { text: 'resumed' },
+      } satisfies AgentMessage;
       yield { type: 'result', sessionId: sid, content: { ok: true } } satisfies AgentMessage;
     })();
   }
@@ -160,14 +170,18 @@ test('resumeLastCreatedSession=true resumes prior session if any', async () => {
   const adapter = new StubAdapter();
   const sc = withProcessCwd(cwd, () => createSuperconnector({ adapter, cwd }));
 
-  for await (const _ of sc.spawn({ prompt: 'first', appId: 'app' })) { /* drain */ }
+  for await (const _ of sc.spawn({ prompt: 'first', appId: 'app' })) {
+    /* drain */
+  }
   adapter.nextSessionId = 'stub-sess-2';
 
   for await (const _ of sc.spawn({
     prompt: 'second',
     appId: 'app',
     resumeLastCreatedSession: true,
-  })) { /* drain */ }
+  })) {
+    /* drain */
+  }
 
   assert.equal(adapter.resumeCalls.length, 1);
   assert.equal(adapter.resumeCalls[0]!.sessionId, 'stub-sess-1');
@@ -183,11 +197,13 @@ test('resumeLastCreatedSession=true uses the adapter recorded for the session', 
 
   await drain(sc.spawn({ prompt: 'first', appId: 'app' }));
   sc.setAdapter(current);
-  await drain(sc.spawn({
-    prompt: 'second',
-    appId: 'app',
-    resumeLastCreatedSession: true,
-  }));
+  await drain(
+    sc.spawn({
+      prompt: 'second',
+      appId: 'app',
+      resumeLastCreatedSession: true,
+    }),
+  );
 
   assert.equal(original.resumeCalls.length, 1);
   assert.equal(original.resumeCalls[0]!.sessionId, 'stub-sess-1');
@@ -201,9 +217,13 @@ test('resumeLastCreatedSession=true is scoped by sessionSelector', async () => {
   const adapter = new StubAdapter();
   const sc = withProcessCwd(cwd, () => createSuperconnector({ adapter, cwd }));
 
-  for await (const _ of sc.spawn({ prompt: 'first', appId: 'app', sessionSelector: 'thread-a' })) { /* drain */ }
+  for await (const _ of sc.spawn({ prompt: 'first', appId: 'app', sessionSelector: 'thread-a' })) {
+    /* drain */
+  }
   adapter.nextSessionId = 'stub-sess-2';
-  for await (const _ of sc.spawn({ prompt: 'second', appId: 'app', sessionSelector: 'thread-b' })) { /* drain */ }
+  for await (const _ of sc.spawn({ prompt: 'second', appId: 'app', sessionSelector: 'thread-b' })) {
+    /* drain */
+  }
   adapter.nextSessionId = 'stub-sess-3';
 
   for await (const _ of sc.spawn({
@@ -211,7 +231,9 @@ test('resumeLastCreatedSession=true is scoped by sessionSelector', async () => {
     appId: 'app',
     sessionSelector: 'thread-a',
     resumeLastCreatedSession: true,
-  })) { /* drain */ }
+  })) {
+    /* drain */
+  }
 
   assert.equal(adapter.resumeCalls.length, 1);
   assert.equal(adapter.resumeCalls[0]!.sessionId, 'stub-sess-1');
@@ -225,14 +247,18 @@ test('resumeLastCreatedSession=true without selector ignores selector-scoped ses
   const adapter = new StubAdapter();
   const sc = withProcessCwd(cwd, () => createSuperconnector({ adapter, cwd }));
 
-  for await (const _ of sc.spawn({ prompt: 'first', appId: 'app', sessionSelector: 'thread-a' })) { /* drain */ }
+  for await (const _ of sc.spawn({ prompt: 'first', appId: 'app', sessionSelector: 'thread-a' })) {
+    /* drain */
+  }
   adapter.nextSessionId = 'stub-sess-2';
 
   for await (const _ of sc.spawn({
     prompt: 'second',
     appId: 'app',
     resumeLastCreatedSession: true,
-  })) { /* drain */ }
+  })) {
+    /* drain */
+  }
 
   assert.equal(adapter.resumeCalls.length, 0);
   assert.equal(adapter.spawnCalls.length, 2);
@@ -248,7 +274,9 @@ test('resumeLastCreatedSession=true falls back to spawn when no prior session', 
     prompt: 'first',
     appId: 'fresh',
     resumeLastCreatedSession: true,
-  })) { /* drain */ }
+  })) {
+    /* drain */
+  }
 
   assert.equal(adapter.spawnCalls.length, 1);
   assert.equal(adapter.resumeCalls.length, 0);
@@ -263,20 +291,25 @@ test('resume rebuilds a recorded built-in adapter when it is not cached', async 
 
   process.env.CODEX_BIN = FAKE_CODEX;
   process.env.SCENARIO = 'ok';
-  recordSpawn({
-    cwd: realpathSync(cwd),
-    appId: 'app',
-    adapter: 'codex',
-    sessionId: 'codex-recorded',
-  }, { root: home, file: join(home, 'registry.json') });
+  recordSpawn(
+    {
+      cwd: realpathSync(cwd),
+      appId: 'app',
+      adapter: 'codex',
+      sessionId: 'codex-recorded',
+    },
+    { root: home, file: join(home, 'registry.json') },
+  );
 
   try {
     const sc = withProcessCwd(cwd, () => createSuperconnector({ adapter: current, cwd }));
-    const messages = await drain(sc.resume({
-      prompt: 'continue',
-      appId: 'app',
-      sessionId: 'codex-recorded',
-    }));
+    const messages = await drain(
+      sc.resume({
+        prompt: 'continue',
+        appId: 'app',
+        sessionId: 'codex-recorded',
+      }),
+    );
 
     assert.equal(current.resumeCalls.length, 0);
     assert.deepEqual(

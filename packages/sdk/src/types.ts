@@ -28,7 +28,12 @@ export interface ResumeOptions extends PermissionOptions {
 
 export type AdapterRunAction = 'spawn' | 'resume';
 
-export type AdapterSelectionSource = 'explicit' | 'config' | 'detected' | 'recorded-session' | 'none';
+export type AdapterSelectionSource =
+  | 'explicit'
+  | 'config'
+  | 'detected'
+  | 'recorded-session'
+  | 'none';
 
 export type WhichAdapterWillRunOptions =
   | (Omit<SpawnOptions, 'prompt'> & { prompt?: string; operation?: 'spawn'; sessionId?: never })
