@@ -58,7 +58,10 @@ export interface SessionLog {
   approvals: ApprovalLogEntry[];
 }
 
-export function sessionLogPath(sessionId: string, paths: RegistryPaths = defaultRegistryPaths()): string {
+export function sessionLogPath(
+  sessionId: string,
+  paths: RegistryPaths = defaultRegistryPaths(),
+): string {
   return join(paths.root, 'sessions', `${sessionId}.json`);
 }
 
@@ -69,11 +72,17 @@ function atomicWriteJson(file: string, data: unknown): void {
   renameSync(tmp, file);
 }
 
-export function writeSessionLog(log: SessionLog, paths: RegistryPaths = defaultRegistryPaths()): void {
+export function writeSessionLog(
+  log: SessionLog,
+  paths: RegistryPaths = defaultRegistryPaths(),
+): void {
   atomicWriteJson(sessionLogPath(log.sessionId, paths), log);
 }
 
-export function readSessionLog(sessionId: string, paths: RegistryPaths = defaultRegistryPaths()): SessionLog | null {
+export function readSessionLog(
+  sessionId: string,
+  paths: RegistryPaths = defaultRegistryPaths(),
+): SessionLog | null {
   const file = sessionLogPath(sessionId, paths);
   if (!existsSync(file)) return null;
   try {
@@ -102,7 +111,11 @@ export function appendApproval(
 ): void {
   updateSessionLog(
     sessionId,
-    (cur) => ({ ...cur, approvals: [...cur.approvals, entry], lastUsedAt: new Date().toISOString() }),
+    (cur) => ({
+      ...cur,
+      approvals: [...cur.approvals, entry],
+      lastUsedAt: new Date().toISOString(),
+    }),
     paths,
   );
 }
@@ -131,7 +144,13 @@ function writeRegistry(paths: RegistryPaths, data: RegistryFile): void {
 }
 
 export function recordSpawn(
-  args: { cwd: string; appId: string; adapter: AdapterKind; sessionId: string; sessionSelector?: string },
+  args: {
+    cwd: string;
+    appId: string;
+    adapter: AdapterKind;
+    sessionId: string;
+    sessionSelector?: string;
+  },
   paths: RegistryPaths = defaultRegistryPaths(),
 ): SessionRecord {
   const data = readRegistry(paths);
@@ -187,7 +206,8 @@ export function listSessions(
     if (entry.cwd !== args.cwd) continue;
     if (args.appId !== undefined && entry.appId !== args.appId) continue;
     for (const session of entry.sessions) {
-      if (args.sessionSelector !== undefined && session.sessionSelector !== args.sessionSelector) continue;
+      if (args.sessionSelector !== undefined && session.sessionSelector !== args.sessionSelector)
+        continue;
       out.push(session);
     }
   }

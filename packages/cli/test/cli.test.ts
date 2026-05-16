@@ -5,7 +5,10 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 
-function onceData(child: ChildProcessWithoutNullStreams, pattern: RegExp): Promise<RegExpMatchArray> {
+function onceData(
+  child: ChildProcessWithoutNullStreams,
+  pattern: RegExp,
+): Promise<RegExpMatchArray> {
   return new Promise((resolveData, reject) => {
     let out = '';
     const timer = setTimeout(() => reject(new Error(`timed out waiting for ${pattern}`)), 5000);
@@ -82,7 +85,9 @@ test('config CLI serves config API and persists local config', async () => {
     });
     assert.equal(saved.status, 200);
 
-    const written = JSON.parse(readFileSync(join(cwd, '.superconnector', 'config.json'), 'utf8')) as {
+    const written = JSON.parse(
+      readFileSync(join(cwd, '.superconnector', 'config.json'), 'utf8'),
+    ) as {
       preferredAdapter?: string;
       permissionMode?: string;
       models?: Record<string, string>;

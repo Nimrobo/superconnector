@@ -96,18 +96,14 @@ export async function startApprovalHost(opts: ApprovalHostOptions): Promise<Appr
           let decision: ApprovalDecision;
           let reason = 'callback';
           try {
-            decision = await withTimeout(
-              opts.callback(req),
-              opts.timeoutMs,
-              () => {
-                reason = 'timeout';
-                opts.onTimeout?.(req.toolName);
-                return {
-                  decision: 'deny',
-                  message: `approval timed out after ${opts.timeoutMs}ms`,
-                };
-              },
-            );
+            decision = await withTimeout(opts.callback(req), opts.timeoutMs, () => {
+              reason = 'timeout';
+              opts.onTimeout?.(req.toolName);
+              return {
+                decision: 'deny',
+                message: `approval timed out after ${opts.timeoutMs}ms`,
+              };
+            });
           } catch (e) {
             reason = 'handler-error';
             decision = {
@@ -151,7 +147,10 @@ export async function startApprovalHost(opts: ApprovalHostOptions): Promise<Appr
   };
   const dir = join(tmpdir(), 'superconnector');
   mkdirSync(dir, { recursive: true });
-  const cfgPath = join(dir, `mcp-${process.pid}-${Date.now()}-${randomBytes(4).toString('hex')}.json`);
+  const cfgPath = join(
+    dir,
+    `mcp-${process.pid}-${Date.now()}-${randomBytes(4).toString('hex')}.json`,
+  );
   writeFileSync(cfgPath, JSON.stringify(mcpConfig, null, 2), 'utf8');
 
   return {

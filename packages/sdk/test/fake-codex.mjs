@@ -57,10 +57,14 @@ if (scenario === 'slow') {
 } else if (scenario === 'malformed-stream') {
   await writeOut('nope\n');
   await writeOut(`${JSON.stringify({ type: 'thread.started', thread_id: sid })}\n`);
-  await writeOut(`${JSON.stringify({ type: 'future.new_event', thread_id: sid, content: { ignored: false } })}\n`);
+  await writeOut(
+    `${JSON.stringify({ type: 'future.new_event', thread_id: sid, content: { ignored: false } })}\n`,
+  );
   await writeOut('{"type":"agent_message","thread_id":"');
   await writeOut(`${sid}","message":{"content":"partial"}}\n`);
-  await writeOut(`${JSON.stringify({ type: 'agent_message_delta', thread_id: sid, delta: 'x'.repeat(8192) })}\n`);
+  await writeOut(
+    `${JSON.stringify({ type: 'agent_message_delta', thread_id: sid, delta: 'x'.repeat(8192) })}\n`,
+  );
   await writeOut(`${JSON.stringify({ type: 'turn.completed', thread_id: sid, result: 'done' })}\n`);
   process.exit(0);
 } else {

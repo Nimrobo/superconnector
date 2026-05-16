@@ -7,7 +7,13 @@ import { fileURLToPath } from 'node:url';
 import { createSuperconnector } from '../src/index.js';
 import { globalConfigPath, writeConfig } from '../src/config.js';
 import { recordSpawn } from '../src/registry.js';
-import type { Adapter, AdapterKind, AgentMessage, ResumeOptions, SpawnOptions } from '../src/types.js';
+import type {
+  Adapter,
+  AdapterKind,
+  AgentMessage,
+  ResumeOptions,
+  SpawnOptions,
+} from '../src/types.js';
 import { withProcessCwd } from './test-util.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -31,14 +37,22 @@ class StubAdapter implements Adapter {
   spawn(opts: SpawnOptions, _cwd: string): AsyncIterable<AgentMessage> {
     this.spawnCalls.push(opts);
     return (async function* () {
-      yield { type: 'assistant', sessionId: 'stub-sess', content: { text: 'spawned' } } satisfies AgentMessage;
+      yield {
+        type: 'assistant',
+        sessionId: 'stub-sess',
+        content: { text: 'spawned' },
+      } satisfies AgentMessage;
     })();
   }
 
   resume(opts: ResumeOptions, _cwd: string): AsyncIterable<AgentMessage> {
     this.resumeCalls.push(opts);
     return (async function* () {
-      yield { type: 'assistant', sessionId: opts.sessionId, content: { text: 'resumed' } } satisfies AgentMessage;
+      yield {
+        type: 'assistant',
+        sessionId: opts.sessionId,
+        content: { text: 'resumed' },
+      } satisfies AgentMessage;
     })();
   }
 }
@@ -85,7 +99,9 @@ async function withBins<T>(
 test('whichAdapterWillRun reports an explicit adapter', async () => {
   await withIsolatedHome(() => {
     const cwd = tmpCwd();
-    const sc = withProcessCwd(cwd, () => createSuperconnector({ cwd, adapter: new StubAdapter('opencode') }));
+    const sc = withProcessCwd(cwd, () =>
+      createSuperconnector({ cwd, adapter: new StubAdapter('opencode') }),
+    );
 
     assert.deepEqual(sc.whichAdapterWillRun(), {
       cwd: realpathSync(cwd),
@@ -121,115 +137,155 @@ test('whichAdapterWillRun reports a configured preferred adapter', async () => {
 
 test('whichAdapterWillRun reports a detected adapter', async () => {
   await withIsolatedHome(() =>
-    withBins({ CLAUDE_BIN: '/no/claude', OPENCODE_BIN: '/no/opencode', CODEX_BIN: FAKE_CODEX }, () => {
-      const cwd = tmpCwd();
-      mkdirSync(join(cwd, '.codex'));
+    withBins(
+      { CLAUDE_BIN: '/no/claude', OPENCODE_BIN: '/no/opencode', CODEX_BIN: FAKE_CODEX },
+      () => {
+        const cwd = tmpCwd();
+        mkdirSync(join(cwd, '.codex'));
 
-      const sc = withProcessCwd(cwd, () => createSuperconnector({ cwd }));
-      const preview = sc.whichAdapterWillRun({ appId: 'app' });
+        const sc = withProcessCwd(cwd, () => createSuperconnector({ cwd }));
+        const preview = sc.whichAdapterWillRun({ appId: 'app' });
 
-      assert.equal(preview.adapter, 'codex');
-      assert.equal(preview.source, 'detected');
-      assert.equal(preview.reason, 'detected_project_adapter');
-      assert.equal(preview.ready, true);
-    }),
+        assert.equal(preview.adapter, 'codex');
+        assert.equal(preview.source, 'detected');
+        assert.equal(preview.reason, 'detected_project_adapter');
+        assert.equal(preview.ready, true);
+      },
+    ),
   );
 });
 
 test('createSuperconnector precedence is explicit adapter over config over detection', async () => {
   await withIsolatedHome(() =>
-    withBins({ CLAUDE_BIN: '/no/claude', OPENCODE_BIN: '/no/opencode', CODEX_BIN: FAKE_CODEX }, () => {
-      const cwd = tmpCwd();
-      mkdirSync(join(cwd, '.codex'));
-      writeConfig(globalConfigPath(), { preferredAdapter: 'opencode' });
+    withBins(
+      { CLAUDE_BIN: '/no/claude', OPENCODE_BIN: '/no/opencode', CODEX_BIN: FAKE_CODEX },
+      () => {
+        const cwd = tmpCwd();
+        mkdirSync(join(cwd, '.codex'));
+        writeConfig(globalConfigPath(), { preferredAdapter: 'opencode' });
 
-      const explicit = withProcessCwd(cwd, () => createSuperconnector({
-        cwd,
-        adapter: new StubAdapter('claude-code'),
-      }));
-      assert.equal(explicit.getAdapter().kind, 'claude-code');
-      assert.equal(explicit.whichAdapterWillRun().source, 'explicit');
+        const explicit = withProcessCwd(cwd, () =>
+          createSuperconnector({
+            cwd,
+            adapter: new StubAdapter('claude-code'),
+          }),
+        );
+        assert.equal(explicit.getAdapter().kind, 'claude-code');
+        assert.equal(explicit.whichAdapterWillRun().source, 'explicit');
 
-      const configured = withProcessCwd(cwd, () => createSuperconnector({ cwd }));
-      assert.equal(configured.getAdapter().kind, 'opencode');
-      assert.equal(configured.whichAdapterWillRun().source, 'config');
-    }),
+        const configured = withProcessCwd(cwd, () => createSuperconnector({ cwd }));
+        assert.equal(configured.getAdapter().kind, 'opencode');
+        assert.equal(configured.whichAdapterWillRun().source, 'config');
+      },
+    ),
   );
 
   await withIsolatedHome(() =>
-    withBins({ CLAUDE_BIN: '/no/claude', OPENCODE_BIN: '/no/opencode', CODEX_BIN: FAKE_CODEX }, () => {
-      const cwd = tmpCwd();
-      mkdirSync(join(cwd, '.codex'));
+    withBins(
+      { CLAUDE_BIN: '/no/claude', OPENCODE_BIN: '/no/opencode', CODEX_BIN: FAKE_CODEX },
+      () => {
+        const cwd = tmpCwd();
+        mkdirSync(join(cwd, '.codex'));
 
-      const detected = withProcessCwd(cwd, () => createSuperconnector({ cwd }));
-      assert.equal(detected.getAdapter().kind, 'codex');
-      assert.equal(detected.whichAdapterWillRun().source, 'detected');
-    }),
+        const detected = withProcessCwd(cwd, () => createSuperconnector({ cwd }));
+        assert.equal(detected.getAdapter().kind, 'codex');
+        assert.equal(detected.whichAdapterWillRun().source, 'detected');
+      },
+    ),
   );
 });
 
 test('whichAdapterWillRun reports each detected built-in adapter with fake binaries', async () => {
   await withIsolatedHome(() =>
-    withBins({ CLAUDE_BIN: FAKE_CLAUDE, OPENCODE_BIN: '/no/opencode', CODEX_BIN: '/no/codex' }, () => {
-      const cwd = tmpCwd();
-      writeFileSync(join(cwd, 'CLAUDE.md'), '# claude');
-      assert.equal(withProcessCwd(cwd, () => createSuperconnector({ cwd }).whichAdapterWillRun().adapter), 'claude-code');
-    }),
+    withBins(
+      { CLAUDE_BIN: FAKE_CLAUDE, OPENCODE_BIN: '/no/opencode', CODEX_BIN: '/no/codex' },
+      () => {
+        const cwd = tmpCwd();
+        writeFileSync(join(cwd, 'CLAUDE.md'), '# claude');
+        assert.equal(
+          withProcessCwd(cwd, () => createSuperconnector({ cwd }).whichAdapterWillRun().adapter),
+          'claude-code',
+        );
+      },
+    ),
   );
   await withIsolatedHome(() =>
-    withBins({ CLAUDE_BIN: '/no/claude', OPENCODE_BIN: FAKE_OPENCODE, CODEX_BIN: '/no/codex' }, () => {
-      const cwd = tmpCwd();
-      writeFileSync(join(cwd, 'opencode.json'), '{}');
-      assert.equal(withProcessCwd(cwd, () => createSuperconnector({ cwd }).whichAdapterWillRun().adapter), 'opencode');
-    }),
+    withBins(
+      { CLAUDE_BIN: '/no/claude', OPENCODE_BIN: FAKE_OPENCODE, CODEX_BIN: '/no/codex' },
+      () => {
+        const cwd = tmpCwd();
+        writeFileSync(join(cwd, 'opencode.json'), '{}');
+        assert.equal(
+          withProcessCwd(cwd, () => createSuperconnector({ cwd }).whichAdapterWillRun().adapter),
+          'opencode',
+        );
+      },
+    ),
   );
   await withIsolatedHome(() =>
-    withBins({ CLAUDE_BIN: '/no/claude', OPENCODE_BIN: '/no/opencode', CODEX_BIN: FAKE_CODEX }, () => {
-      const cwd = tmpCwd();
-      writeFileSync(join(cwd, 'AGENTS.md'), '# agents');
-      assert.equal(withProcessCwd(cwd, () => createSuperconnector({ cwd }).whichAdapterWillRun().adapter), 'codex');
-    }),
+    withBins(
+      { CLAUDE_BIN: '/no/claude', OPENCODE_BIN: '/no/opencode', CODEX_BIN: FAKE_CODEX },
+      () => {
+        const cwd = tmpCwd();
+        writeFileSync(join(cwd, 'AGENTS.md'), '# agents');
+        assert.equal(
+          withProcessCwd(cwd, () => createSuperconnector({ cwd }).whichAdapterWillRun().adapter),
+          'codex',
+        );
+      },
+    ),
   );
 });
 
 test('whichAdapterWillRun reports no adapter when none is resolved', async () => {
   await withIsolatedHome(() =>
-    withBins({ CLAUDE_BIN: '/no/claude', OPENCODE_BIN: '/no/opencode', CODEX_BIN: '/no/codex' }, () => {
-      const cwd = tmpCwd();
-      const sc = withProcessCwd(cwd, () => createSuperconnector({ cwd }));
+    withBins(
+      { CLAUDE_BIN: '/no/claude', OPENCODE_BIN: '/no/opencode', CODEX_BIN: '/no/codex' },
+      () => {
+        const cwd = tmpCwd();
+        const sc = withProcessCwd(cwd, () => createSuperconnector({ cwd }));
 
-      assert.deepEqual(sc.whichAdapterWillRun({ appId: 'app' }), {
-        cwd: realpathSync(cwd),
-        action: 'spawn',
-        adapter: null,
-        source: 'none',
-        ready: false,
-        reason: 'no_adapter',
-        session: null,
-      });
-    }),
+        assert.deepEqual(sc.whichAdapterWillRun({ appId: 'app' }), {
+          cwd: realpathSync(cwd),
+          action: 'spawn',
+          adapter: null,
+          source: 'none',
+          ready: false,
+          reason: 'no_adapter',
+          session: null,
+        });
+      },
+    ),
   );
 });
 
 test('whichAdapterWillRun resolves resumeLastCreatedSession to the recorded adapter', async () => {
   await withIsolatedHome((home) => {
     const cwd = tmpCwd();
-    const session = recordSpawn({
-      cwd: realpathSync(cwd),
-      appId: 'app',
-      sessionSelector: 'thread-a',
-      adapter: 'claude-code',
-      sessionId: 'recorded-1',
-    }, { root: home, file: join(home, 'registry.json') });
-    recordSpawn({
-      cwd: realpathSync(cwd),
-      appId: 'app',
-      sessionSelector: 'thread-b',
-      adapter: 'opencode',
-      sessionId: 'recorded-2',
-    }, { root: home, file: join(home, 'registry.json') });
+    const session = recordSpawn(
+      {
+        cwd: realpathSync(cwd),
+        appId: 'app',
+        sessionSelector: 'thread-a',
+        adapter: 'claude-code',
+        sessionId: 'recorded-1',
+      },
+      { root: home, file: join(home, 'registry.json') },
+    );
+    recordSpawn(
+      {
+        cwd: realpathSync(cwd),
+        appId: 'app',
+        sessionSelector: 'thread-b',
+        adapter: 'opencode',
+        sessionId: 'recorded-2',
+      },
+      { root: home, file: join(home, 'registry.json') },
+    );
 
-    const sc = withProcessCwd(cwd, () => createSuperconnector({ cwd, adapter: new StubAdapter('codex') }));
+    const sc = withProcessCwd(cwd, () =>
+      createSuperconnector({ cwd, adapter: new StubAdapter('codex') }),
+    );
     const preview = sc.whichAdapterWillRun({
       appId: 'app',
       sessionSelector: 'thread-a',
@@ -245,26 +301,34 @@ test('whichAdapterWillRun resolves resumeLastCreatedSession to the recorded adap
       reason: 'latest_session',
       session,
     });
-    assert.equal(sc.whichAdapterWillRun({
-      appId: 'app',
-      sessionSelector: 'thread-b',
-      resumeLastCreatedSession: true,
-    }).adapter, 'opencode');
+    assert.equal(
+      sc.whichAdapterWillRun({
+        appId: 'app',
+        sessionSelector: 'thread-b',
+        resumeLastCreatedSession: true,
+      }).adapter,
+      'opencode',
+    );
   });
 });
 
 test('whichAdapterWillRun falls back to spawn when resumeLastCreatedSession finds no match', async () => {
   await withIsolatedHome((home) => {
     const cwd = tmpCwd();
-    recordSpawn({
-      cwd: realpathSync(cwd),
-      appId: 'app',
-      sessionSelector: 'thread-a',
-      adapter: 'claude-code',
-      sessionId: 'recorded-1',
-    }, { root: home, file: join(home, 'registry.json') });
+    recordSpawn(
+      {
+        cwd: realpathSync(cwd),
+        appId: 'app',
+        sessionSelector: 'thread-a',
+        adapter: 'claude-code',
+        sessionId: 'recorded-1',
+      },
+      { root: home, file: join(home, 'registry.json') },
+    );
 
-    const sc = withProcessCwd(cwd, () => createSuperconnector({ cwd, adapter: new StubAdapter('codex') }));
+    const sc = withProcessCwd(cwd, () =>
+      createSuperconnector({ cwd, adapter: new StubAdapter('codex') }),
+    );
     const preview = sc.whichAdapterWillRun({
       appId: 'app',
       resumeLastCreatedSession: true,
@@ -281,15 +345,20 @@ test('whichAdapterWillRun falls back to spawn when resumeLastCreatedSession find
 test('whichAdapterWillRun resolves explicit resume sessions without mutating session state', async () => {
   await withIsolatedHome((home) => {
     const cwd = tmpCwd();
-    const session = recordSpawn({
-      cwd: realpathSync(cwd),
-      appId: 'app',
-      sessionSelector: 'thread-a',
-      adapter: 'opencode',
-      sessionId: 'recorded-1',
-    }, { root: home, file: join(home, 'registry.json') });
+    const session = recordSpawn(
+      {
+        cwd: realpathSync(cwd),
+        appId: 'app',
+        sessionSelector: 'thread-a',
+        adapter: 'opencode',
+        sessionId: 'recorded-1',
+      },
+      { root: home, file: join(home, 'registry.json') },
+    );
 
-    const sc = withProcessCwd(cwd, () => createSuperconnector({ cwd, adapter: new StubAdapter('codex') }));
+    const sc = withProcessCwd(cwd, () =>
+      createSuperconnector({ cwd, adapter: new StubAdapter('codex') }),
+    );
     const before = sc.listSessions({ appId: 'app' })[0]!;
     const preview = sc.whichAdapterWillRun({
       operation: 'resume',
@@ -315,7 +384,9 @@ test('whichAdapterWillRun resolves explicit resume sessions without mutating ses
 test('whichAdapterWillRun reports unknown explicit resume sessions', async () => {
   await withIsolatedHome(() => {
     const cwd = tmpCwd();
-    const sc = withProcessCwd(cwd, () => createSuperconnector({ cwd, adapter: new StubAdapter('codex') }));
+    const sc = withProcessCwd(cwd, () =>
+      createSuperconnector({ cwd, adapter: new StubAdapter('codex') }),
+    );
     const preview = sc.whichAdapterWillRun({
       operation: 'resume',
       appId: 'app',

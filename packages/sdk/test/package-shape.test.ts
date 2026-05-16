@@ -12,7 +12,9 @@ interface PackageJson {
 }
 
 function readPackageJson(): PackageJson {
-  return JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as PackageJson;
+  return JSON.parse(
+    readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
+  ) as PackageJson;
 }
 
 test('sdk package exposes sdk entrypoints without a cli binary', () => {
@@ -54,17 +56,21 @@ test('packed sdk can be installed by a consumer and exposes runtime/types/skills
     cwd: consumerDir,
     stdio: 'pipe',
   });
-  execFileSync(process.execPath, [
-    '--input-type=module',
-    '-e',
+  execFileSync(
+    process.execPath,
     [
-      'import { createSuperconnector } from "@nimrobo/superconnector";',
-      'import { ClaudeCodeAdapter } from "@nimrobo/superconnector/adapters/claude-code";',
-      'import { OpenCodeAdapter } from "@nimrobo/superconnector/adapters/opencode";',
-      'import { CodexAdapter } from "@nimrobo/superconnector/adapters/codex";',
-      'if (!createSuperconnector || !ClaudeCodeAdapter || !OpenCodeAdapter || !CodexAdapter) process.exit(1);',
-    ].join('\n'),
-  ], { cwd: consumerDir, stdio: 'pipe' });
+      '--input-type=module',
+      '-e',
+      [
+        'import { createSuperconnector } from "@nimrobo/superconnector";',
+        'import { ClaudeCodeAdapter } from "@nimrobo/superconnector/adapters/claude-code";',
+        'import { OpenCodeAdapter } from "@nimrobo/superconnector/adapters/opencode";',
+        'import { CodexAdapter } from "@nimrobo/superconnector/adapters/codex";',
+        'if (!createSuperconnector || !ClaudeCodeAdapter || !OpenCodeAdapter || !CodexAdapter) process.exit(1);',
+      ].join('\n'),
+    ],
+    { cwd: consumerDir, stdio: 'pipe' },
+  );
 
   const installed = join(consumerDir, 'node_modules', '@nimrobo', 'superconnector');
   assert.ok(existsSync(join(installed, 'dist', 'index.d.ts')));

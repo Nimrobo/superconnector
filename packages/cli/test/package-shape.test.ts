@@ -9,7 +9,9 @@ interface PackageJson {
 }
 
 function readPackageJson(): PackageJson {
-  return JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as PackageJson;
+  return JSON.parse(
+    readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
+  ) as PackageJson;
 }
 
 test('cli package owns the superconnector binary and depends on the sdk', () => {

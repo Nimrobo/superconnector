@@ -3,7 +3,11 @@ import { CodexAdapter } from './codex/index.js';
 import { OpenCodeAdapter } from './opencode/index.js';
 import type { Adapter, AdapterKind } from '../types.js';
 
-export const ADAPTER_KINDS = ['claude-code', 'opencode', 'codex'] as const satisfies readonly AdapterKind[];
+export const ADAPTER_KINDS = [
+  'claude-code',
+  'opencode',
+  'codex',
+] as const satisfies readonly AdapterKind[];
 
 export interface BuiltinAdapterOptions {
   models?: Partial<Record<AdapterKind, string>>;

@@ -31,7 +31,8 @@ function parseConfigFlags(args: string[]): ConfigCliFlags {
       const next = args[++i];
       if (!next) throw new Error('--port requires a value');
       const n = Number(next);
-      if (!Number.isFinite(n) || n < 0 || n > 65535) throw new Error(`invalid --port value: ${next}`);
+      if (!Number.isFinite(n) || n < 0 || n > 65535)
+        throw new Error(`invalid --port value: ${next}`);
       out.port = n;
     } else if (a === '-h' || a === '--help') {
       usage();

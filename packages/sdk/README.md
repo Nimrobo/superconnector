@@ -19,16 +19,16 @@ Requirements:
 ## Quick Start
 
 ```ts
-import { createSuperconnector } from "@nimrobo/superconnector";
+import { createSuperconnector } from '@nimrobo/superconnector';
 
 const sc = createSuperconnector({
-  adapter: "claude-code",
+  adapter: 'claude-code',
 });
 
 for await (const msg of sc.spawn({
-  prompt: "Review this repository and summarize the highest-risk areas.",
-  appId: "my-app",
-  permissionMode: "read",
+  prompt: 'Review this repository and summarize the highest-risk areas.',
+  appId: 'my-app',
+  permissionMode: 'read',
 })) {
   console.log(msg.type, msg.sessionId, msg.content);
 }
@@ -57,7 +57,7 @@ import {
   type SessionRecord,
   type SpawnOptions,
   type Superconnector,
-} from "@nimrobo/superconnector";
+} from '@nimrobo/superconnector';
 ```
 
 Config entry point:
@@ -70,22 +70,22 @@ import {
   resolveConfig,
   writeConfig,
   type SuperconnectorConfig,
-} from "@nimrobo/superconnector/config";
+} from '@nimrobo/superconnector/config';
 ```
 
 Adapter entry points:
 
 ```ts
-import { ClaudeCodeAdapter } from "@nimrobo/superconnector/adapters/claude-code";
-import { OpenCodeAdapter } from "@nimrobo/superconnector/adapters/opencode";
-import { CodexAdapter } from "@nimrobo/superconnector/adapters/codex";
+import { ClaudeCodeAdapter } from '@nimrobo/superconnector/adapters/claude-code';
+import { OpenCodeAdapter } from '@nimrobo/superconnector/adapters/opencode';
+import { CodexAdapter } from '@nimrobo/superconnector/adapters/codex';
 ```
 
 Core types:
 
 ```ts
-type AdapterKind = "claude-code" | "opencode" | "codex";
-type PermissionMode = "read" | "acceptEdits";
+type AdapterKind = 'claude-code' | 'opencode' | 'codex';
+type PermissionMode = 'read' | 'acceptEdits';
 
 interface SpawnOptions {
   prompt: string;
@@ -110,7 +110,7 @@ interface ResumeOptions {
 }
 
 interface AgentMessage {
-  type: "assistant" | "user" | "system" | "result" | "tool_use" | "tool_result" | "superconnector";
+  type: 'assistant' | 'user' | 'system' | 'result' | 'tool_use' | 'tool_result' | 'superconnector';
   sessionId: string;
   content: unknown;
   raw?: unknown;
@@ -123,7 +123,7 @@ Use an explicit adapter when your app knows which agent runtime it is targeting:
 
 ```ts
 const sc = createSuperconnector({
-  adapter: "codex",
+  adapter: 'codex',
 });
 ```
 
@@ -136,7 +136,7 @@ const sc = createSuperconnector();
 By default the agent runs in `process.cwd()`. Pass `cwd` only to narrow execution to the current process directory or one of its descendants:
 
 ```ts
-const sc = createSuperconnector({ cwd: "packages/app" });
+const sc = createSuperconnector({ cwd: 'packages/app' });
 ```
 
 For absolute workspace paths, start the trusted Node process from that workspace root and omit `cwd`; explicit cwd values outside the process cwd tree are rejected.
@@ -154,11 +154,11 @@ If no adapter is set or detected, `getAdapter()`, `spawn()`, and `resume()` thro
 Consumer apps that need to show or confirm the runtime before starting work should call `whichAdapterWillRun()` with the same run-shaped options they will pass to `spawn()` or `resume()`. The preview does not start an agent and does not update session state.
 
 ```ts
-import type { SpawnOptions } from "@nimrobo/superconnector";
+import type { SpawnOptions } from '@nimrobo/superconnector';
 
 const run = {
   prompt,
-  appId: "my-app",
+  appId: 'my-app',
   sessionSelector: workspaceId,
   resumeLastCreatedSession: true,
 } satisfies SpawnOptions;
@@ -183,7 +183,7 @@ for (const a of sc.listAdapters()) {
 }
 
 // Models for a given adapter kind (independent of the currently selected adapter).
-const models = await sc.listModels("claude-code");
+const models = await sc.listModels('claude-code');
 console.log(models.map((m) => m.id));
 ```
 
@@ -198,14 +198,14 @@ marks the adapter this `Superconnector` will use. `listModels(kind)` returns
 Superconnector records sessions by `cwd` and `appId`. Use a stable `appId` for your app or feature:
 
 ```ts
-const sessions = sc.listSessions({ appId: "my-app" });
+const sessions = sc.listSessions({ appId: 'my-app' });
 ```
 
 Use `sessionSelector` when one `appId` needs separate threads, workspaces, tabs, or user-visible conversations:
 
 ```ts
 const sessions = sc.listSessions({
-  appId: "my-app",
+  appId: 'my-app',
   sessionSelector: workspaceId,
 });
 ```
@@ -213,15 +213,15 @@ const sessions = sc.listSessions({
 ### Resume an explicit session
 
 ```ts
-const [latest] = sc.listSessions({ appId: "my-app", sessionSelector: workspaceId });
+const [latest] = sc.listSessions({ appId: 'my-app', sessionSelector: workspaceId });
 
 if (latest) {
   for await (const msg of sc.resume({
-    prompt: "Continue from the previous result.",
+    prompt: 'Continue from the previous result.',
     appId: latest.appId,
     sessionSelector: latest.sessionSelector,
     sessionId: latest.sessionId,
-    permissionMode: "read",
+    permissionMode: 'read',
   })) {
     publish(msg);
   }
@@ -235,10 +235,10 @@ if (latest) {
 ```ts
 for await (const msg of sc.spawn({
   prompt,
-  appId: "my-app",
+  appId: 'my-app',
   sessionSelector: workspaceId,
   resumeLastCreatedSession: true,
-  permissionMode: "read",
+  permissionMode: 'read',
 })) {
   publish(msg);
 }
@@ -255,12 +255,12 @@ Claude Code supports approval callbacks:
 ```ts
 for await (const msg of sc.spawn({
   prompt,
-  appId: "my-app",
-  permissionMode: "acceptEdits",
+  appId: 'my-app',
+  permissionMode: 'acceptEdits',
   approvalTimeoutMs: 60_000,
   onApprovalRequest: async (request) => {
     if (request.cwd !== workspaceRoot) {
-      return { decision: "deny", message: "Workspace mismatch" };
+      return { decision: 'deny', message: 'Workspace mismatch' };
     }
 
     const approved = await askUser({
@@ -269,9 +269,7 @@ for await (const msg of sc.spawn({
       input: request.input,
     });
 
-    return approved
-      ? { decision: "allow" }
-      : { decision: "deny", message: "Denied by user" };
+    return approved ? { decision: 'allow' } : { decision: 'deny', message: 'Denied by user' };
   },
 })) {
   publish(msg);
@@ -294,9 +292,9 @@ const controller = new AbortController();
 const run = (async () => {
   for await (const msg of sc.spawn({
     prompt,
-    appId: "my-app",
+    appId: 'my-app',
     sessionSelector: workspaceId,
-    permissionMode: "read",
+    permissionMode: 'read',
     signal: controller.signal,
   })) {
     publish(msg);
@@ -342,11 +340,11 @@ npx @nimrobo/superconnector-cli config
 
 ## Adapter Behavior
 
-| Adapter | Project marker | Binary | Permission mapping |
-| --- | --- | --- | --- |
-| `claude-code` | `CLAUDE.md` or `.claude` | `claude` or `CLAUDE_BIN` | `read` maps to Claude plan mode; `acceptEdits` maps to Claude accept-edits mode. |
-| `opencode` | `opencode.json` or `.opencode` | `opencode` or `OPENCODE_BIN` | `read` uses default run behavior; `acceptEdits` adds `--dangerously-skip-permissions`. |
-| `codex` | `AGENTS.md` or `.codex` | `codex` or `CODEX_BIN` | `read` maps to read-only sandbox; `acceptEdits` maps to workspace-write sandbox. |
+| Adapter       | Project marker                 | Binary                       | Permission mapping                                                                     |
+| ------------- | ------------------------------ | ---------------------------- | -------------------------------------------------------------------------------------- |
+| `claude-code` | `CLAUDE.md` or `.claude`       | `claude` or `CLAUDE_BIN`     | `read` maps to Claude plan mode; `acceptEdits` maps to Claude accept-edits mode.       |
+| `opencode`    | `opencode.json` or `.opencode` | `opencode` or `OPENCODE_BIN` | `read` uses default run behavior; `acceptEdits` adds `--dangerously-skip-permissions`. |
+| `codex`       | `AGENTS.md` or `.codex`        | `codex` or `CODEX_BIN`       | `read` maps to read-only sandbox; `acceptEdits` maps to workspace-write sandbox.       |
 
 Each adapter streams normalized `AgentMessage` objects while keeping the raw adapter message on `raw` when available. Treat `content` as adapter-shaped data and normalize it at your app boundary before storing or rendering.
 
@@ -360,7 +358,7 @@ try {
 } catch (error) {
   if (error instanceof PermissionRequiredError) {
     publishError({
-      code: "permission_required",
+      code: 'permission_required',
       message: error.message,
       sessionId: error.sessionId,
       resumeCommand: error.resumeCommand,
@@ -369,12 +367,12 @@ try {
   }
 
   if (error instanceof UnknownSessionError) {
-    publishError({ code: "unknown_session", message: error.message });
+    publishError({ code: 'unknown_session', message: error.message });
     return;
   }
 
   publishError({
-    code: "agent_failed",
+    code: 'agent_failed',
     message: error instanceof Error ? error.message : String(error),
   });
 }
@@ -392,15 +390,10 @@ Common SDK errors:
 Prefer a stub adapter for app-level tests:
 
 ```ts
-import type {
-  Adapter,
-  AgentMessage,
-  ResumeOptions,
-  SpawnOptions,
-} from "@nimrobo/superconnector";
+import type { Adapter, AgentMessage, ResumeOptions, SpawnOptions } from '@nimrobo/superconnector';
 
 class StubAdapter implements Adapter {
-  readonly kind = "claude-code" as const;
+  readonly kind = 'claude-code' as const;
   spawnCalls: SpawnOptions[] = [];
   resumeCalls: ResumeOptions[] = [];
 
@@ -410,11 +403,11 @@ class StubAdapter implements Adapter {
 
   spawn(opts: SpawnOptions): AsyncIterable<AgentMessage> {
     this.spawnCalls.push(opts);
-    const sessionId = "stub-session-1";
+    const sessionId = 'stub-session-1';
     return (async function* () {
-      yield { type: "system", sessionId, content: { started: true } };
-      yield { type: "assistant", sessionId, content: { text: "Ready" } };
-      yield { type: "result", sessionId, content: { ok: true } };
+      yield { type: 'system', sessionId, content: { started: true } };
+      yield { type: 'assistant', sessionId, content: { text: 'Ready' } };
+      yield { type: 'result', sessionId, content: { ok: true } };
     })();
   }
 
@@ -422,8 +415,8 @@ class StubAdapter implements Adapter {
     this.resumeCalls.push(opts);
     const sessionId = opts.sessionId;
     return (async function* () {
-      yield { type: "assistant", sessionId, content: { text: "Resumed" } };
-      yield { type: "result", sessionId, content: { ok: true } };
+      yield { type: 'assistant', sessionId, content: { text: 'Resumed' } };
+      yield { type: 'result', sessionId, content: { ok: true } };
     })();
   }
 }
@@ -432,19 +425,19 @@ class StubAdapter implements Adapter {
 Use a temporary `cwd` and isolated `SUPERCONNECTOR_HOME` per test file or case:
 
 ```ts
-import { mkdirSync, mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { createSuperconnector } from "@nimrobo/superconnector";
+import { mkdirSync, mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { createSuperconnector } from '@nimrobo/superconnector';
 
-process.env.SUPERCONNECTOR_HOME = mkdtempSync(join(tmpdir(), "sc-home-"));
+process.env.SUPERCONNECTOR_HOME = mkdtempSync(join(tmpdir(), 'sc-home-'));
 
-const base = mkdtempSync(join(tmpdir(), "sc-cwd-"));
-const cwd = join(base, "workspace");
+const base = mkdtempSync(join(tmpdir(), 'sc-cwd-'));
+const cwd = join(base, 'workspace');
 mkdirSync(cwd);
 process.chdir(base);
 
-const sc = createSuperconnector({ cwd: "workspace", adapter: new StubAdapter() });
+const sc = createSuperconnector({ cwd: 'workspace', adapter: new StubAdapter() });
 ```
 
 ## License

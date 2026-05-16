@@ -16,7 +16,11 @@ function canExecute(path: string): boolean {
   }
 }
 
-function candidateNames(command: string, platform: NodeJS.Platform, env: NodeJS.ProcessEnv): string[] {
+function candidateNames(
+  command: string,
+  platform: NodeJS.Platform,
+  env: NodeJS.ProcessEnv,
+): string[] {
   if (platform !== 'win32' || /\.[^\\/]+$/.test(command)) return [command];
   const exts = (env['PATHEXT'] ?? '.EXE;.CMD;.BAT;.COM')
     .split(';')

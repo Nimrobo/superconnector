@@ -91,7 +91,10 @@ test('createSuperconnector rejects explicit parent cwd', () => {
   mkdirSync(child);
 
   withProcessCwd(child, () => {
-    assert.throws(() => createSuperconnector({ cwd: '..', adapter: new CwdAdapter() }), InvalidCwdError);
+    assert.throws(
+      () => createSuperconnector({ cwd: '..', adapter: new CwdAdapter() }),
+      InvalidCwdError,
+    );
   });
 });
 
@@ -103,7 +106,10 @@ test('createSuperconnector rejects explicit sibling cwd', () => {
   mkdirSync(b);
 
   withProcessCwd(a, () => {
-    assert.throws(() => createSuperconnector({ cwd: '../b', adapter: new CwdAdapter() }), InvalidCwdError);
+    assert.throws(
+      () => createSuperconnector({ cwd: '../b', adapter: new CwdAdapter() }),
+      InvalidCwdError,
+    );
   });
 });
 
@@ -112,7 +118,10 @@ test('createSuperconnector rejects unrelated absolute cwd', () => {
   const other = tmp();
 
   withProcessCwd(cwd, () => {
-    assert.throws(() => createSuperconnector({ cwd: other, adapter: new CwdAdapter() }), InvalidCwdError);
+    assert.throws(
+      () => createSuperconnector({ cwd: other, adapter: new CwdAdapter() }),
+      InvalidCwdError,
+    );
   });
 });
 
@@ -122,8 +131,14 @@ test('createSuperconnector rejects nonexistent cwd and file paths', () => {
   writeFileSync(file, 'not a directory', 'utf8');
 
   withProcessCwd(cwd, () => {
-    assert.throws(() => createSuperconnector({ cwd: 'missing', adapter: new CwdAdapter() }), InvalidCwdError);
-    assert.throws(() => createSuperconnector({ cwd: 'file.txt', adapter: new CwdAdapter() }), InvalidCwdError);
+    assert.throws(
+      () => createSuperconnector({ cwd: 'missing', adapter: new CwdAdapter() }),
+      InvalidCwdError,
+    );
+    assert.throws(
+      () => createSuperconnector({ cwd: 'file.txt', adapter: new CwdAdapter() }),
+      InvalidCwdError,
+    );
   });
 });
 
@@ -149,6 +164,9 @@ test('createSuperconnector rejects symlink escapes', () => {
   symlinkSync(outside, join(cwd, 'outside-link'), 'dir');
 
   withProcessCwd(cwd, () => {
-    assert.throws(() => createSuperconnector({ cwd: 'outside-link', adapter: new CwdAdapter() }), InvalidCwdError);
+    assert.throws(
+      () => createSuperconnector({ cwd: 'outside-link', adapter: new CwdAdapter() }),
+      InvalidCwdError,
+    );
   });
 });

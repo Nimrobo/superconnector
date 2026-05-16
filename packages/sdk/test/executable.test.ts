@@ -3,10 +3,7 @@ import assert from 'node:assert/strict';
 import { chmodSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import {
-  isExecutableAvailable,
-  isExecutableAvailableForPlatform,
-} from '../src/util/executable.js';
+import { isExecutableAvailable, isExecutableAvailableForPlatform } from '../src/util/executable.js';
 
 function executable(path: string): string {
   writeFileSync(path, '#!/usr/bin/env node\nprocess.exit(0)\n', 'utf8');
@@ -29,10 +26,7 @@ test('isExecutableAvailable resolves commands from PATH', () => {
   const dir = mkdtempSync(join(tmpdir(), 'sc-exec-path-'));
   executable(join(dir, 'sc-tool'));
 
-  assert.equal(
-    isExecutableAvailableForPlatform('sc-tool', process.platform, { PATH: dir }),
-    true,
-  );
+  assert.equal(isExecutableAvailableForPlatform('sc-tool', process.platform, { PATH: dir }), true);
   assert.equal(
     isExecutableAvailableForPlatform('missing-tool', process.platform, { PATH: dir }),
     false,

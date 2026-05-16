@@ -30,7 +30,9 @@ export interface ConfigServerHandle {
   close: () => Promise<void>;
 }
 
-async function collectModelOptions(cwd: string): Promise<Partial<Record<AdapterKind, AdapterModel[]>>> {
+async function collectModelOptions(
+  cwd: string,
+): Promise<Partial<Record<AdapterKind, AdapterModel[]>>> {
   const modelOptions: Partial<Record<AdapterKind, AdapterModel[]>> = {};
   for (const kind of ADAPTER_KINDS) {
     const adapter = createBuiltinAdapter(kind);
@@ -47,10 +49,7 @@ async function collectModelOptions(cwd: string): Promise<Partial<Record<AdapterK
 
 function resolveIndexHtml(): string {
   const here = dirname(fileURLToPath(import.meta.url));
-  const candidates = [
-    join(here, 'index.html'),
-    join(here, '..', '..', 'src', 'web', 'index.html'),
-  ];
+  const candidates = [join(here, 'index.html'), join(here, '..', '..', 'src', 'web', 'index.html')];
   for (const p of candidates) {
     if (existsSync(p)) return readFileSync(p, 'utf8');
   }
@@ -77,7 +76,9 @@ function sendText(res: ServerResponse, status: number, body: string, type = 'tex
   res.end(body);
 }
 
-export async function startConfigServer(opts: StartConfigServerOptions): Promise<ConfigServerHandle> {
+export async function startConfigServer(
+  opts: StartConfigServerOptions,
+): Promise<ConfigServerHandle> {
   const html = resolveIndexHtml();
   const token = randomBytes(16).toString('hex');
   const cwd = opts.cwd;
@@ -119,7 +120,8 @@ export async function startConfigServer(opts: StartConfigServerOptions): Promise
           sendJson(res, 400, { error: 'invalid json' });
           return;
         }
-        const target = path === '/api/config/global' ? resolveConfig(cwd).globalPath : localConfigPath(cwd);
+        const target =
+          path === '/api/config/global' ? resolveConfig(cwd).globalPath : localConfigPath(cwd);
         writeConfig(target, parsed);
         sendJson(res, 200, { ok: true, written: target, value: readConfig(target) ?? {} });
         return;

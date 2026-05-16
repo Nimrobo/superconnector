@@ -36,7 +36,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "clean": "rm -rf dist",
-    "test": "node --test --import tsx test/**/*.test.ts",
+    "test": "node --test --import tsx test/*.test.ts",
     "test:real": "SUPERCONNECTOR_REAL_CLI_TESTS=1 node --test --import tsx test/real-cli.test.ts"
   },
   "engines": {

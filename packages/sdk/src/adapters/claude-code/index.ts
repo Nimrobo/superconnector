@@ -43,7 +43,10 @@ export class ClaudeCodeAdapter implements Adapter {
   }
 
   detect(cwd: string): boolean {
-    return this.binaryAvailable && (isDirectory(join(cwd, '.claude')) || pathExists(join(cwd, 'CLAUDE.md')));
+    return (
+      this.binaryAvailable &&
+      (isDirectory(join(cwd, '.claude')) || pathExists(join(cwd, 'CLAUDE.md')))
+    );
   }
 
   spawn(opts: SpawnOptions, cwd: string): AsyncIterable<AgentMessage> {

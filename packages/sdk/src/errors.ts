@@ -29,7 +29,11 @@ export class AdapterNotSetError extends SuperconnectorError {
 }
 
 export class InvalidCwdError extends SuperconnectorError {
-  constructor(public readonly cwd: string, public readonly processCwd: string, options?: ErrorOptions) {
+  constructor(
+    public readonly cwd: string,
+    public readonly processCwd: string,
+    options?: ErrorOptions,
+  ) {
     super(
       `Invalid cwd "${cwd}". Explicit cwd must be the current process cwd or a descendant of "${processCwd}".`,
       options,
@@ -39,7 +43,11 @@ export class InvalidCwdError extends SuperconnectorError {
 }
 
 export class AdapterFailedError extends SuperconnectorError {
-  constructor(message: string, public readonly exitCode: number | null, public readonly stderr: string) {
+  constructor(
+    message: string,
+    public readonly exitCode: number | null,
+    public readonly stderr: string,
+  ) {
     super(message);
     this.name = 'AdapterFailedError';
   }

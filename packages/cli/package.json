@@ -15,7 +15,7 @@
     "build": "npm run build --workspace @nimrobo/superconnector && npm run build:local",
     "build:local": "tsc -p tsconfig.json && mkdir -p dist/web && cp src/web/index.html dist/web/index.html",
     "clean": "rm -rf dist",
-    "test": "npm run build --workspace @nimrobo/superconnector && node --test --import tsx test/**/*.test.ts"
+    "test": "npm run build --workspace @nimrobo/superconnector && node --test --import tsx test/*.test.ts"
   },
   "dependencies": {
     "@nimrobo/superconnector": "0.1.0"

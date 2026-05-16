@@ -74,7 +74,9 @@ class MetaStubAdapter implements Adapter {
 test('session log is written with metadata after spawn', async () => {
   isolatedHome();
   const cwd = mkdtempSync(join(tmpdir(), 'sc-cwd-'));
-  const sc = withProcessCwd(cwd, () => createSuperconnector({ adapter: new MetaStubAdapter(), cwd }));
+  const sc = withProcessCwd(cwd, () =>
+    createSuperconnector({ adapter: new MetaStubAdapter(), cwd }),
+  );
 
   const seenTypes: string[] = [];
   for await (const m of sc.spawn({ prompt: 'hello world', appId: 'app' })) {
@@ -129,15 +131,14 @@ test('PermissionRequiredError thrown by adapter is recorded in session log', asy
     }
   }
 
-  const sc = withProcessCwd(cwd, () => createSuperconnector({ adapter: new FailingAdapter(), cwd }));
-  await assert.rejects(
-    async () => {
-      for await (const _ of sc.spawn({ prompt: 'p', appId: 'app' })) {
-        /* drain */
-      }
-    },
-    PermissionRequiredError,
+  const sc = withProcessCwd(cwd, () =>
+    createSuperconnector({ adapter: new FailingAdapter(), cwd }),
   );
+  await assert.rejects(async () => {
+    for await (const _ of sc.spawn({ prompt: 'p', appId: 'app' })) {
+      /* drain */
+    }
+  }, PermissionRequiredError);
 
   const log = readSessionLog('fail-sess');
   assert.ok(log, 'log written before failure');
@@ -273,8 +274,11 @@ async function connectChild(port: number, token: string): Promise<ChildLink> {
   sock.write(`${JSON.stringify({ type: 'hello', token })}\n`);
 
   let buf = '';
-  const queue: Array<{ id: number; decision: { decision: 'allow' | 'deny'; message?: string } }> = [];
-  const waiters: Array<(v: { id: number; decision: { decision: 'allow' | 'deny'; message?: string } }) => void> = [];
+  const queue: Array<{ id: number; decision: { decision: 'allow' | 'deny'; message?: string } }> =
+    [];
+  const waiters: Array<
+    (v: { id: number; decision: { decision: 'allow' | 'deny'; message?: string } }) => void
+  > = [];
   sock.setEncoding('utf8');
   sock.on('data', (chunk: string) => {
     buf += chunk;
@@ -358,7 +362,10 @@ test('approval host: callback that hangs times out and returns deny', async () =
   const cwd = mkdtempSync(join(tmpdir(), 'sc-cwd-'));
   const timeouts: string[] = [];
   const host = await startApprovalHost({
-    callback: () => new Promise(() => { /* never resolves */ }),
+    callback: () =>
+      new Promise(() => {
+        /* never resolves */
+      }),
     sessionId: 'sess-T',
     cwd,
     timeoutMs: 80,
@@ -490,11 +497,14 @@ test('ClaudeCodeAdapter resume includes --resume session id and prompt', async (
   try {
     await withArgsFile(async (argsPath) => {
       const adapter = new ClaudeCodeAdapter({ binPath: FAKE_CLAUDE });
-      for await (const _ of adapter.resume({
-        prompt: 'continue',
-        appId: 'app',
-        sessionId: 'claude-sess-1',
-      }, cwd)) {
+      for await (const _ of adapter.resume(
+        {
+          prompt: 'continue',
+          appId: 'app',
+          sessionId: 'claude-sess-1',
+        },
+        cwd,
+      )) {
         /* drain */
       }
       const args = readArgs(argsPath);

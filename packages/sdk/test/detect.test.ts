@@ -18,7 +18,10 @@ function tmp(): string {
   return mkdtempSync(join(tmpdir(), 'sc-detect-'));
 }
 
-function withBins<T>(bins: Partial<Record<'CLAUDE_BIN' | 'CODEX_BIN' | 'OPENCODE_BIN', string>>, fn: () => T): T {
+function withBins<T>(
+  bins: Partial<Record<'CLAUDE_BIN' | 'CODEX_BIN' | 'OPENCODE_BIN', string>>,
+  fn: () => T,
+): T {
   const prev = {
     CLAUDE_BIN: process.env.CLAUDE_BIN,
     CODEX_BIN: process.env.CODEX_BIN,
@@ -140,36 +143,48 @@ test('detectAdapter can discover a binary from PATH without explicit env bin', (
 });
 
 test('detectAdapter detects claude-code via CLAUDE.md with env binary', () => {
-  withBins({ CLAUDE_BIN: FAKE_CLAUDE, OPENCODE_BIN: '/no/opencode', CODEX_BIN: '/no/codex' }, () => {
-    const dir = tmp();
-    writeFileSync(join(dir, 'CLAUDE.md'), '# claude');
-    assert.equal(detectAdapter(dir), 'claude-code');
-  });
+  withBins(
+    { CLAUDE_BIN: FAKE_CLAUDE, OPENCODE_BIN: '/no/opencode', CODEX_BIN: '/no/codex' },
+    () => {
+      const dir = tmp();
+      writeFileSync(join(dir, 'CLAUDE.md'), '# claude');
+      assert.equal(detectAdapter(dir), 'claude-code');
+    },
+  );
 });
 
 test('detectAdapter detects opencode via opencode.json with env binary', () => {
-  withBins({ CLAUDE_BIN: '/no/claude', OPENCODE_BIN: FAKE_OPENCODE, CODEX_BIN: '/no/codex' }, () => {
-    const dir = tmp();
-    writeFileSync(join(dir, 'opencode.json'), '{}');
-    assert.equal(detectAdapter(dir), 'opencode');
-  });
+  withBins(
+    { CLAUDE_BIN: '/no/claude', OPENCODE_BIN: FAKE_OPENCODE, CODEX_BIN: '/no/codex' },
+    () => {
+      const dir = tmp();
+      writeFileSync(join(dir, 'opencode.json'), '{}');
+      assert.equal(detectAdapter(dir), 'opencode');
+    },
+  );
 });
 
 test('detectAdapter detects codex via .codex with env binary', () => {
-  withBins({ CLAUDE_BIN: '/no/claude', OPENCODE_BIN: '/no/opencode', CODEX_BIN: FAKE_CODEX }, () => {
-    const dir = tmp();
-    mkdirSync(join(dir, '.codex'));
-    assert.equal(detectAdapter(dir), 'codex');
-  });
+  withBins(
+    { CLAUDE_BIN: '/no/claude', OPENCODE_BIN: '/no/opencode', CODEX_BIN: FAKE_CODEX },
+    () => {
+      const dir = tmp();
+      mkdirSync(join(dir, '.codex'));
+      assert.equal(detectAdapter(dir), 'codex');
+    },
+  );
 });
 
 test('detectAdapter skips matching adapter when its binary is unavailable', () => {
-  withBins({ CLAUDE_BIN: '/no/claude', OPENCODE_BIN: '/no/opencode', CODEX_BIN: FAKE_CODEX }, () => {
-    const dir = tmp();
-    writeFileSync(join(dir, 'opencode.json'), '{}');
-    mkdirSync(join(dir, '.codex'));
-    assert.equal(detectAdapter(dir), 'codex');
-  });
+  withBins(
+    { CLAUDE_BIN: '/no/claude', OPENCODE_BIN: '/no/opencode', CODEX_BIN: FAKE_CODEX },
+    () => {
+      const dir = tmp();
+      writeFileSync(join(dir, 'opencode.json'), '{}');
+      mkdirSync(join(dir, '.codex'));
+      assert.equal(detectAdapter(dir), 'codex');
+    },
+  );
 });
 
 test('detectAdapter preserves same-directory adapter priority', () => {
@@ -183,13 +198,16 @@ test('detectAdapter preserves same-directory adapter priority', () => {
 });
 
 test('detectAdapter walks upward', () => {
-  withBins({ CLAUDE_BIN: '/no/claude', OPENCODE_BIN: '/no/opencode', CODEX_BIN: FAKE_CODEX }, () => {
-    const parent = tmp();
-    const child = join(parent, 'a', 'b');
-    mkdirSync(child, { recursive: true });
-    writeFileSync(join(parent, 'AGENTS.md'), '# agents');
-    assert.equal(detectAdapter(child), 'codex');
-  });
+  withBins(
+    { CLAUDE_BIN: '/no/claude', OPENCODE_BIN: '/no/opencode', CODEX_BIN: FAKE_CODEX },
+    () => {
+      const parent = tmp();
+      const child = join(parent, 'a', 'b');
+      mkdirSync(child, { recursive: true });
+      writeFileSync(join(parent, 'AGENTS.md'), '# agents');
+      assert.equal(detectAdapter(child), 'codex');
+    },
+  );
 });
 
 test('detectAdapter prefers the nearest ancestor before adapter priority at higher ancestors', () => {
@@ -205,37 +223,43 @@ test('detectAdapter prefers the nearest ancestor before adapter priority at high
 });
 
 test('detectAdapter handles symlinked cwd paths and spaces', () => {
-  withBins({ CLAUDE_BIN: '/no/claude', OPENCODE_BIN: FAKE_OPENCODE, CODEX_BIN: '/no/codex' }, () => {
-    const targetParent = mkdtempSync(join(tmpdir(), 'sc detect target '));
-    const target = join(targetParent, 'project with spaces');
-    mkdirSync(target, { recursive: true });
-    writeFileSync(join(target, 'opencode.json'), '{}');
+  withBins(
+    { CLAUDE_BIN: '/no/claude', OPENCODE_BIN: FAKE_OPENCODE, CODEX_BIN: '/no/codex' },
+    () => {
+      const targetParent = mkdtempSync(join(tmpdir(), 'sc detect target '));
+      const target = join(targetParent, 'project with spaces');
+      mkdirSync(target, { recursive: true });
+      writeFileSync(join(target, 'opencode.json'), '{}');
 
-    const linkParent = mkdtempSync(join(tmpdir(), 'sc detect link '));
-    const link = join(linkParent, 'linked project');
-    symlinkSync(target, link, 'dir');
+      const linkParent = mkdtempSync(join(tmpdir(), 'sc detect link '));
+      const link = join(linkParent, 'linked project');
+      symlinkSync(target, link, 'dir');
 
-    assert.equal(detectAdapter(link), 'opencode');
-  });
+      assert.equal(detectAdapter(link), 'opencode');
+    },
+  );
 });
 
 test('detectAdapter does not walk above the home directory boundary', () => {
-  withBins({ CLAUDE_BIN: '/no/claude', OPENCODE_BIN: '/no/opencode', CODEX_BIN: FAKE_CODEX }, () => {
-    const prevHome = process.env.HOME;
-    const fakeRoot = mkdtempSync(join(tmpdir(), 'sc-home-root-'));
-    const fakeHome = join(fakeRoot, 'home');
-    const project = join(fakeHome, 'project');
-    mkdirSync(project, { recursive: true });
-    mkdirSync(join(fakeRoot, '.codex'));
-    process.env.HOME = fakeHome;
-    try {
-      assert.equal(homedir(), fakeHome);
-      assert.equal(detectAdapter(project), null);
-    } finally {
-      if (prevHome === undefined) delete process.env.HOME;
-      else process.env.HOME = prevHome;
-    }
-  });
+  withBins(
+    { CLAUDE_BIN: '/no/claude', OPENCODE_BIN: '/no/opencode', CODEX_BIN: FAKE_CODEX },
+    () => {
+      const prevHome = process.env.HOME;
+      const fakeRoot = mkdtempSync(join(tmpdir(), 'sc-home-root-'));
+      const fakeHome = join(fakeRoot, 'home');
+      const project = join(fakeHome, 'project');
+      mkdirSync(project, { recursive: true });
+      mkdirSync(join(fakeRoot, '.codex'));
+      process.env.HOME = fakeHome;
+      try {
+        assert.equal(homedir(), fakeHome);
+        assert.equal(detectAdapter(project), null);
+      } finally {
+        if (prevHome === undefined) delete process.env.HOME;
+        else process.env.HOME = prevHome;
+      }
+    },
+  );
 });
 
 test('detectAdapter returns null when no usable markers match', () => {
@@ -265,14 +289,17 @@ test('detectAdapters omits adapters whose binary is unavailable', () => {
 });
 
 test('detectAdapters de-duplicates a kind detected at multiple ancestors', () => {
-  withBins({ CLAUDE_BIN: '/no/claude', OPENCODE_BIN: '/no/opencode', CODEX_BIN: FAKE_CODEX }, () => {
-    const parent = tmp();
-    const child = join(parent, 'a', 'b');
-    mkdirSync(child, { recursive: true });
-    mkdirSync(join(parent, '.codex'));
-    writeFileSync(join(child, 'AGENTS.md'), '# agents');
-    assert.deepEqual(detectAdapters(child), ['codex']);
-  });
+  withBins(
+    { CLAUDE_BIN: '/no/claude', OPENCODE_BIN: '/no/opencode', CODEX_BIN: FAKE_CODEX },
+    () => {
+      const parent = tmp();
+      const child = join(parent, 'a', 'b');
+      mkdirSync(child, { recursive: true });
+      mkdirSync(join(parent, '.codex'));
+      writeFileSync(join(child, 'AGENTS.md'), '# agents');
+      assert.deepEqual(detectAdapters(child), ['codex']);
+    },
+  );
 });
 
 test('detectAdapters returns an empty array when nothing matches', () => {
