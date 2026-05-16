@@ -289,14 +289,17 @@ test('detectAdapters omits adapters whose binary is unavailable', () => {
 });
 
 test('detectAdapters de-duplicates a kind detected at multiple ancestors', () => {
-  withBins({ CLAUDE_BIN: '/no/claude', OPENCODE_BIN: '/no/opencode', CODEX_BIN: FAKE_CODEX }, () => {
-    const parent = tmp();
-    const child = join(parent, 'a', 'b');
-    mkdirSync(child, { recursive: true });
-    mkdirSync(join(parent, '.codex'));
-    writeFileSync(join(child, 'AGENTS.md'), '# agents');
-    assert.deepEqual(detectAdapters(child), ['codex']);
-  });
+  withBins(
+    { CLAUDE_BIN: '/no/claude', OPENCODE_BIN: '/no/opencode', CODEX_BIN: FAKE_CODEX },
+    () => {
+      const parent = tmp();
+      const child = join(parent, 'a', 'b');
+      mkdirSync(child, { recursive: true });
+      mkdirSync(join(parent, '.codex'));
+      writeFileSync(join(child, 'AGENTS.md'), '# agents');
+      assert.deepEqual(detectAdapters(child), ['codex']);
+    },
+  );
 });
 
 test('detectAdapters returns an empty array when nothing matches', () => {

@@ -149,7 +149,7 @@ for (const a of sc.listAdapters()) {
 }
 
 // Models for a given adapter kind, independent of the selected adapter.
-const models = await sc.listModels("claude-code");
+const models = await sc.listModels('claude-code');
 console.log(models.map((m) => m.id));
 ```
 
