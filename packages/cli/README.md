@@ -1,6 +1,11 @@
-# @nimrobo/superconnector-cli
+# Superconnector CLI
 
-Command-line companion for Superconnector. The CLI currently provides a local config UI for the `@nimrobo/superconnector` SDK.
+[![npm version](https://img.shields.io/npm/v/@nimrobo/superconnector-cli.svg)](https://www.npmjs.com/package/@nimrobo/superconnector-cli)
+[![npm downloads](https://img.shields.io/npm/dm/@nimrobo/superconnector-cli.svg)](https://www.npmjs.com/package/@nimrobo/superconnector-cli)
+[![license](https://img.shields.io/npm/l/@nimrobo/superconnector-cli.svg)](./LICENSE)
+[![node](https://img.shields.io/node/v/@nimrobo/superconnector-cli.svg)](https://nodejs.org)
+
+`@nimrobo/superconnector-cli` — command-line companion for Superconnector. The CLI currently provides a local config UI for the `@nimrobo/superconnector` SDK.
 
 ## Install
 

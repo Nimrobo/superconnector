@@ -1,5 +1,10 @@
 # Superconnector
 
+[![npm version](https://img.shields.io/npm/v/@nimrobo/superconnector.svg?label=%40nimrobo%2Fsuperconnector)](https://www.npmjs.com/package/@nimrobo/superconnector)
+[![npm version](https://img.shields.io/npm/v/@nimrobo/superconnector-cli.svg?label=%40nimrobo%2Fsuperconnector-cli)](https://www.npmjs.com/package/@nimrobo/superconnector-cli)
+[![license](https://img.shields.io/npm/l/@nimrobo/superconnector.svg)](./LICENSE)
+[![node](https://img.shields.io/node/v/@nimrobo/superconnector.svg)](https://nodejs.org)
+
 Superconnector is a Node/TypeScript SDK for apps that need to start, resume, and stream coding-agent sessions from a trusted runtime. It gives product code one small interface for running agent CLIs such as Claude Code, OpenCode, and Codex while keeping session history, resume behavior, permissions, and configuration in one place.
 
 This release is beta-ready. The core API is intended for real integration work, but the package is still `0.1.x`; adapter details can evolve as upstream agent CLIs change.
