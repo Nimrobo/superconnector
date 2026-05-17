@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.2.1](https://github.com/Nimrobo/superconnector/compare/superconnector-cli-v0.2.0...superconnector-cli-v0.2.1) (2026-05-17)
+
+
+### Bug Fixes
+
+* correct README titles and add npm badges ([#21](https://github.com/Nimrobo/superconnector/issues/21)) ([026548c](https://github.com/Nimrobo/superconnector/commit/026548ce73a8c5768ba204b600fc5be9f9aa912a))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * dependencies
+    * @nimrobo/superconnector bumped from 0.2.0 to 0.2.1
+
 ## [0.2.0](https://github.com/Nimrobo/superconnector/compare/superconnector-cli-v0.1.0...superconnector-cli-v0.2.0) (2026-05-17)
 
 
