@@ -1,6 +1,11 @@
-# @nimrobo/superconnector
+# Superconnector SDK
 
-TypeScript SDK for apps that need to spawn, resume, and stream coding-agent sessions from a trusted Node runtime.
+[![npm version](https://img.shields.io/npm/v/@nimrobo/superconnector.svg)](https://www.npmjs.com/package/@nimrobo/superconnector)
+[![npm downloads](https://img.shields.io/npm/dm/@nimrobo/superconnector.svg)](https://www.npmjs.com/package/@nimrobo/superconnector)
+[![license](https://img.shields.io/npm/l/@nimrobo/superconnector.svg)](./LICENSE)
+[![node](https://img.shields.io/node/v/@nimrobo/superconnector.svg)](https://nodejs.org)
+
+`@nimrobo/superconnector` — TypeScript SDK for apps that need to spawn, resume, and stream coding-agent sessions from a trusted Node runtime.
 
 Superconnector is beta-ready for integration work. The package is currently `0.1.x`, so keep adapter-specific behavior and upstream CLI changes in mind when upgrading.
 
