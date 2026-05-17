@@ -1,6 +1,6 @@
 {
   "name": "@nimrobo/superconnector",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Agent-agnostic transport for apps to spawn, resume, and stream coding-agent sessions (Claude Code, OpenCode, Codex).",
   "type": "module",
   "main": "./dist/index.js",

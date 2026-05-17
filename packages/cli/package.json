@@ -1,6 +1,6 @@
 {
   "name": "@nimrobo/superconnector-cli",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Command-line tools for Superconnector.",
   "type": "module",
   "bin": {
@@ -18,7 +18,7 @@
     "test": "npm run build --workspace @nimrobo/superconnector && node --test --import tsx test/*.test.ts"
   },
   "dependencies": {
-    "@nimrobo/superconnector": "0.1.0"
+    "@nimrobo/superconnector": "0.2.0"
   },
   "engines": {
     "node": ">=20"
